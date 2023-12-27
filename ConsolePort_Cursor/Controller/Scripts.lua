@@ -55,15 +55,6 @@ do
 			GameTooltip:Show()
 		end
 	end
-	if QuestMapLogTitleButton_OnEnter then
-		Scripts.OnEnter[ QuestMapLogTitleButton_OnEnter ] = function(self)
-			-- this replacement script runs itself, but handles a particular bug when the cursor is atop a quest button when the map is opened.
-			-- all data is not yet populated so difficultyHighlightColor can be nil, which isn't checked for in the default UI code.
-			CPAPI.NextRender(function()
-				QuestMapLogTitleButton_OnEnter(self)
-			end)
-		end
-	end
 	if CPAPI.IsRetailVersion then
 	-----------------------------------------------------------
 		_('Blizzard_Collections', function()
@@ -101,7 +92,7 @@ do
 			Scripts.OnEnter[ ClassTalentButtonSplitSelectMixin.OnEnter ] = function(self)
 				self:SetAttribute(env.Attributes.SpecialClick, function(self, button, down)
 					TalentButtonSplitSelectMixin.OnEnter(self)
-					CPAPI.NextRender(function()
+					RunNextFrame(function()
 						env.Cursor:SetCurrentNode(selectionChoiceFrame.selectionFrameArray[1])
 					end)
 				end)
@@ -124,7 +115,7 @@ do
 
 			selectionChoiceFrame:HookScript('OnHide', function(self)
 				if currentBaseButton then
-					CPAPI.NextRender(function()
+					RunNextFrame(function()
 						env.Cursor:SetCurrentNode(currentBaseButton)
 						currentBaseButton = nil;
 					end)
@@ -179,7 +170,7 @@ do
 			Scripts.OnLeave[ ClassTalentButtonSplitSelectMixin.OnLeave ] = TalentButtonSplitSelectMixin.OnLeave;
 			Scripts.OnLeave[ ClassTalentSelectionChoiceMixin.OnLeave ] = function(self)
 				TalentDisplayMixin.OnLeave(self)
-				CPAPI.NextRender(function()
+				RunNextFrame(function()
 					if ConsolePortSpellMenu:IsShown() then return end;
 					
 					local currentNode = env.Cursor:GetCurrentNode()

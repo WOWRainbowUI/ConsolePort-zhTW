@@ -16,6 +16,7 @@ local Stack = db:Register('Stack', CPAPI.CreateEventHandler({'Frame', '$parentUI
 }, {
 	Registry = {};
 }), true);
+local GetPoint, IsVisible = Stack.GetPoint, Stack.IsVisible;
 
 ---------------------------------------------------------------
 -- Externals:
@@ -32,7 +33,7 @@ function Stack:IsCursorObstructed() return isObstructed end
 do local frames, visible, buffer, hooks, forbidden, obstructors = {}, {}, {}, {}, {}, {};
 
 	local function updateVisible(self)
-		visible[self] = self:GetPoint() and self:IsVisible() and true or nil;
+		visible[self] = GetPoint(self) and IsVisible(self) and true or nil;
 	end
 
 	local function updateBuffer(self, flag)
@@ -102,9 +103,7 @@ do local frames, visible, buffer, hooks, forbidden, obstructors = {}, {}, {}, {}
 				end
 
 				frames[widget] = true
-				if widget:IsVisible() and widget:GetPoint() then
-					visible[widget] = true
-				end
+				updateVisible(widget)
 			end
 			return true
 		else
@@ -158,17 +157,20 @@ do local frames, visible, buffer, hooks, forbidden, obstructors = {}, {}, {}, {}
 	end
 
 	function Stack:ToggleCore()
-		local showOnDemand = db('UIshowOnDemand')
-		isEnabled = db('UIenableCursor') and not showOnDemand;
-		if not isEnabled and not showOnDemand then
-			db.Cursor:SetEnabled(false)
+		isEnabled = db('UIenableCursor');
+		if not isEnabled then
+			db.Cursor:OnStackChanged(false)
 		end
 	end
 
 	function Stack:UpdateFrames(updateCursor)
 		if not isLocked then
 			self:UpdateFrameTracker()
-			db.Cursor:SetEnabled(next(visible))
+			RunNextFrame(function()
+				if not isLocked then
+					db.Cursor:OnStackChanged(not not next(visible))
+				end
+			end)
 		end
 	end
 
@@ -201,7 +203,7 @@ function Stack:PLAYER_REGEN_ENABLED()
 end
 
 function Stack:PLAYER_REGEN_DISABLED()
-	db.Cursor:SetEnabled(false)
+	db.Cursor:OnStackChanged(false)
 	self:LockCore(true)
 end
 
