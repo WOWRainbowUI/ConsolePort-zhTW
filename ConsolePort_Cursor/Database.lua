@@ -25,7 +25,7 @@ ConsolePort:AddVariables({
 	UIshowOnDemand = _{Data.Bool(false);
 		name = '依需求出現';
 		desc = '需要時便會顯示游標，而不是面板出現時才顯示。';
-		note = '需要切換介面游標按鈕綁定 & 無使用限制來使用游標。';
+		note = '需要綁定 "切換介面游標" 按鈕來使用游標。';
 		advd = true;
 	};
 	UIholdRepeatDisable = _{Data.Bool(false);
@@ -107,6 +107,12 @@ env.StandaloneFrameStack = {
 for i=1, (NUM_CONTAINER_FRAMES   or 13) do tinsert(env.StandaloneFrameStack, 'ContainerFrame'..i) end
 for i=1, (NUM_GROUP_LOOT_FRAMES  or 4)  do tinsert(env.StandaloneFrameStack, 'GroupLootFrame'..i) end
 for i=1, (STATICPOPUP_NUMDIALOGS or 4)  do tinsert(env.StandaloneFrameStack, 'StaticPopup'..i)    end
+
+env.UnlimitedFrameStack = {
+	UIParent;
+	DropDownList1;
+	DropDownList2;
+};
 
 
 ---------------------------------------------------------------

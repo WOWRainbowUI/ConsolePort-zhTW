@@ -331,7 +331,7 @@ function PanelMixin:OnFirstShow()
 end
 
 env.Options = ConsolePortConfig:CreatePanel({
-	name  = UIOPTIONS_MENU;
+	name  = INTERFACE_LABEL;
 	mixin = PanelMixin;
 	scaleToParent = true;
 	forbidRecursiveScale = true;
