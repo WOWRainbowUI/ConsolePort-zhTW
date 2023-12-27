@@ -288,8 +288,8 @@ function Number:OnClick()
 		self.CatchRight = env.Config:CatchButton('PADDRIGHT', self.OnRightButton, self)
 		self.tooltipHints = {
 			env:GetTooltipPromptForClick('LeftClick', APPLY);
-			env:GetTooltipPrompt('PADDLEFT', env.L'Decrease');
-			env:GetTooltipPrompt('PADDRIGHT', env.L'Increase');
+			env:GetTooltipPrompt('PADDLEFT', env.L'減少');
+			env:GetTooltipPrompt('PADDRIGHT', env.L'增加');
 		};
 	else
 		env.Config:FreeButton('PADDLEFT', self.CatchLeft)

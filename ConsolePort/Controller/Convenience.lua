@@ -64,14 +64,14 @@ if ColorPickerFrame then
 		PAD2 = ColorPickerCancelButton;
 	};
 	local tooltipLines = {
-		PADLSTICKUP    = CreateColor(CPAPI.HSV2RGB(270, 0.5, 1)):WrapTextInColorCode(L'Purple');
-		PADLSTICKDOWN  = CreateColor(CPAPI.HSV2RGB(090, 0.5, 1)):WrapTextInColorCode(L'Green');
-		PADLSTICKLEFT  = CreateColor(CPAPI.HSV2RGB(000, 0.5, 1)):WrapTextInColorCode(L'Red');
-		PADLSTICKRIGHT = CreateColor(CPAPI.HSV2RGB(180, 0.5, 1)):WrapTextInColorCode(L'Cyan');
-		PADRSTICKUP    = L'Increase lightness';
-		PADRSTICKDOWN  = L'Decrease lightness';
-		PADRSTICKLEFT  = L'Decrease opacity';
-		PADRSTICKRIGHT = L'Increase opacity';
+		PADLSTICKUP    = CreateColor(CPAPI.HSV2RGB(270, 0.5, 1)):WrapTextInColorCode('紫');
+		PADLSTICKDOWN  = CreateColor(CPAPI.HSV2RGB(090, 0.5, 1)):WrapTextInColorCode('綠');
+		PADLSTICKLEFT  = CreateColor(CPAPI.HSV2RGB(000, 0.5, 1)):WrapTextInColorCode('紅');
+		PADLSTICKRIGHT = CreateColor(CPAPI.HSV2RGB(180, 0.5, 1)):WrapTextInColorCode('青');
+		PADRSTICKUP    = '增加亮度';
+		PADRSTICKDOWN  = '減少亮度';
+		PADRSTICKLEFT  = '增加透明度';
+		PADRSTICKRIGHT = '減少透明度';
 	}
 	for button, control in pairs(controls) do
 		control:SetText(('%s %s'):format(GetBindingText(button, '_ABBR'), control:GetText()))

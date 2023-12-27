@@ -64,12 +64,12 @@ db:Register('Variables', {
 		note = '停用此選項來使用傳統的分散式移動控制。';
 	};
 	mvmtStrafeAngleTravel = _{Range(tonumber(GetCVar('GamePadFaceMovementMaxAngle')) or 115, 5, 0, 180);
-		name = '面向搖桿移動最大角度 (平時)';
+		name = '面向搖桿移動的分界點 (平時)';
 		desc = '控制角色何時要從面向前方變成面向搖桿移動的方向，這是與正前方相差的角度。';
 		note = '設為 0 時，會永遠面向搖桿移動的方向。\n設為最大值時，永遠不會面向搖桿移動的方向。';
 	};
 	mvmtStrafeAngleCombat = _{Range(tonumber(GetCVar('GamePadFaceMovementMaxAngleCombat')) or 115, 5, 0, 180);
-		name = '面向搖桿移動最大角度 (戰鬥)';
+		name = '面向搖桿移動的分界點 (戰鬥)';
 		desc = '控制戰鬥中，角色何時要從面向前方變成面向搖桿移動的方向，這是與正前方相差的角度。';
 		note = '設為 0 時，會永遠面向搖桿移動的方向。\n設為最大值時，永遠不會面向搖桿移動的方向。';
 	};
@@ -77,13 +77,13 @@ db:Register('Variables', {
 		name = '跑步 / 走路的分界點';
 		desc = '控制角色何時要從走路變成跑步。以您的總移動搖桿半徑的分數表示。';
 	};
-	mvmtTurnWithCamera = _{Map(tonumber(GetCVar('GamePadTurnWithCamera')) or 2, {[0] = NEVER, [1] = 'In Combat', [2] = ALWAYS});
-		name = '角色隨鏡頭轉向';
+	mvmtTurnWithCamera = _{Map(tonumber(GetCVar('GamePadTurnWithCamera')) or 2, {[0] = NEVER, [1] = '戰鬥中', [2] = ALWAYS});
+		name = '角色跟隨鏡頭轉向';
 		desc = '轉動鏡頭角度時，也要轉動角色的面向。';
 	};
 	mvmtStrafeAngleTravelMacro = _{String(nil);
 		name = '面向搖桿移動的巨集條件 (平時)';
-		desc = '用於取代平時面向搖桿移動最大角度的巨集條件。';
+		desc = '用於取代平時面向搖桿移動分界點的巨集條件。';
 		note = '格式為...\n'
 			.. BLUE'[條件] 角度; nil'
 			.. '\n...使用分號分隔每個條件/角度， "nil" 表示不取代。';
@@ -91,7 +91,7 @@ db:Register('Variables', {
 	};
 	mvmtStrafeAngleCombatMacro = _{String(nil);
 		name = '面向搖桿移動的巨集條件 (戰鬥)';
-		desc = '用於取代戰鬥中面向搖桿移動最大角度的巨集條件。';
+		desc = '用於取代戰鬥中面向搖桿移動分界點的巨集條件。';
 		note = '格式為...\n'
 			.. BLUE'[條件] 角度; nil'
 			.. '\n...使用分號分隔每個條件/角度， "nil" 表示不取代。';
