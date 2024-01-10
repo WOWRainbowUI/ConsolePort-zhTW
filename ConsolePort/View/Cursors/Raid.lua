@@ -16,7 +16,6 @@ Cursor.SetTarget:SetAttribute(CPAPI.ActionTypeRelease, 'target')
 Cursor.SetFocus:SetAttribute(CPAPI.ActionTypeRelease, 'focus')
 Cursor:SetFrameRef('SetFocus', Cursor.SetFocus)
 Cursor:SetFrameRef('SetTarget', Cursor.SetTarget)
-Cursor:SetFrameRef('Toggle', Cursor.Toggle)
 Cursor:WrapScript(Cursor.Toggle, 'PreClick', [[
 	if button == 'ON' then
 		if enabled then return end;
@@ -43,6 +42,7 @@ Cursor:WrapScript(Cursor.Toggle, 'PreClick', [[
 ]])
 
 Cursor:Wrap('PreClick', [[
+	self::UpdateNodes()
 	self::SelectNewNode(button)
 	if self:GetAttribute('usefocus') or not self:GetAttribute('useroute') then
 		self:SetAttribute('unit', self:GetAttribute('cursorunit'))
@@ -60,9 +60,8 @@ Cursor:Execute([[
 	---------------------------------------
 	Focus  = self:GetFrameRef('SetFocus')
 	Target = self:GetFrameRef('SetTarget')
-	Toggle = self:GetFrameRef('Toggle')
 	---------------------------------------
-	CACHE[Toggle] = true;
+	CACHE[self] = nil;
 ]])
 
 ---------------------------------------------------------------
@@ -75,14 +74,20 @@ Cursor:CreateEnvironment({
 			local action = node:GetAttribute('action')
 
 			if unit and not action then
-				if node:GetRect() and self::IsValidNode() then
+				if self::IsValidNode(unit) and node:IsVisible() then
 					NODES[node] = true;
-					CACHE[node] = true;
 				end
 			elseif action and tonumber(action) then
-				ACTIONS[node] = unit or false;
-				CACHE[node] = true;
+				if ( ACTIONS[node] == nil ) then
+					ACTIONS[node] = unit or false;
+				end
 			end
+		end
+	]];
+	UpdateNodes = [[
+		wipe(NODES)
+		for object in pairs(CACHE) do
+			node = object; self::FilterNode()
 		end
 	]];
 	FilterOld = [[
@@ -165,7 +170,7 @@ Cursor:CreateEnvironment({
 			RegisterStateDriver(self, 'unitexists', ('[@%s,exists] true; nil'):format(unit))
 
 			self:ClearAllPoints()
-			self:SetPoint('TOPLEFT', curnode, 'CENTER', 0, 0)
+			self:SetPoint('CENTER', curnode, 'CENTER', 0, 0)
 			self:SetAttribute('node', curnode)
 			self:SetAttribute('cursorunit', unit)
 
@@ -224,6 +229,13 @@ Cursor:CreateEnvironment({
 	]];
 })
 
+-- Attempt to move the cursor to another unit frame when the current unit expires.
+-- This may only work for unit frames loaded before the cursor is created,
+-- since they are otherwise likely to be on screen when the state handler runs.
+Cursor:SetAttribute('_onstate-unitexists', CPAPI.ConvertSecureBody([[
+	self::UpdateUnitExists(newstate)
+]]))
+
 ---------------------------------------------------------------
 -- Settings
 ---------------------------------------------------------------
@@ -250,26 +262,23 @@ function Cursor:OnDataLoaded()
 	self:SetAttribute('usefocus', mode == self.Modes.Focus)
 	self:SetAttribute('type', mode == self.Modes.Focus and 'focus' or 'target')
 
-	self:SetAttribute('IsValidNode', 'return ' .. (db('raidCursorFilter') or 'true') .. ';')
+	self:SetFilter(db('raidCursorFilter'))
 	self:SetAttribute('wrapDisable', db('raidCursorWrapDisable'))
 	self:SetScale(db('raidCursorScale'))
+	self:UpdatePointer()
 
 	self:Execute('wipe(BUTTONS)')
 	for direction, varID in pairs(self.Directions) do
 		self:Execute(('BUTTONS[%q] = %q'):format(direction, db(varID)))
 	end 
 
-	if CPAPI.IsRetailVersion then
-		self.Arrow:SetAtlas('Navigation-Tracked-Arrow', true)
-	else
-		self.Arrow:SetTexture([[Interface\WorldMap\WorldMapArrow]])
-		self.Arrow:SetSize(24, 24)
-	end
+	self:RegisterEvent('ADDON_LOADED')
+	self.ADDON_LOADED = self.GROUP_ROSTER_UPDATE;
 end
 
 function Cursor:OnUpdateOverrides(isPriority)
 	if not isPriority then
-		self:Execute('self:RunAttribute("ToggleCursor", enabled)')
+		self:Run('self::ToggleCursor(enabled)')
 	end
 end
 
@@ -292,14 +301,13 @@ db:RegisterSafeCallback('OnUpdateOverrides', Cursor.OnUpdateOverrides, Cursor)
 -- Script handlers
 ---------------------------------------------------------------
 function Cursor:OnHide()
-	self:UnregisterAllEvents()
+	for _, event in ipairs(self.PlayerEvents) do self:UnregisterEvent(event) end
+	for _, event in ipairs(self.ActiveEvents) do self:UnregisterEvent(event) end
 end
 
 function Cursor:OnShow()
-	for _, event in ipairs(self.PlayerEvents) do
-		self:RegisterUnitEvent(event, 'player')
-	end
-	self:RegisterEvent('PLAYER_TARGET_CHANGED')
+	for _, event in ipairs(self.PlayerEvents) do self:RegisterUnitEvent(event, 'player') end
+	for _, event in ipairs(self.ActiveEvents) do self:RegisterEvent(event) end
 end
 
 function Cursor:OnAttributeChanged(attribute, value)
@@ -319,6 +327,7 @@ do 	local UnitExists = UnitExists;
 					self:UpdateCastbar(self.startTime, self.endTime)
 				elseif (self.resetPortrait) then
 					self.resetPortrait = false;
+					self.LineSheen:Hide()
 					self.UnitPortrait:SetPortrait(self.unit)
 				end
 			end
@@ -328,7 +337,12 @@ do 	local UnitExists = UnitExists;
 end
 
 CPAPI.Start(Cursor)
-Mixin(CPAPI.EventHandler(Cursor), {
+Mixin(CPAPI.EventHandler(Cursor, {
+	'GROUP_ROSTER_UPDATE';
+	'PLAYER_ENTERING_WORLD';
+	'PLAYER_REGEN_DISABLED';
+	'PLAYER_REGEN_ENABLED';
+}), {
 	-----------------
 	timer    = 0;
 	throttle = 0.025;
@@ -343,20 +357,26 @@ Mixin(CPAPI.EventHandler(Cursor), {
 		'UNIT_SPELLCAST_STOP';
 		'UNIT_SPELLCAST_SUCCEEDED';
 	};
+	ActiveEvents = {
+		'PLAYER_TARGET_CHANGED';
+	};
 })
 
 ---------------------------------------------------------------
 -- Frontend
 ---------------------------------------------------------------
-local Fade = db.Alpha.Fader;
+local Fade, Flash = db.Alpha.Fader, db.Alpha.Flash;
+local PORTRAIT_TEXTURE_SIZE = 46;
 
 do 	local IsHarmfulSpell, IsHelpfulSpell = IsHarmfulSpell, IsHelpfulSpell;
 	local UnitClass, UnitHealth, UnitHealthMax = UnitClass, UnitHealth, UnitHealthMax;
 	local GetClassColorObj, PlaySound, SOUNDKIT = GetClassColorObj, PlaySound, SOUNDKIT;
 	local WARNING_LOW_HEALTH = ChatTypeInfo.YELL;
 
+	for _, region in ipairs({Cursor.Display.UnitInformation:GetRegions()}) do
+		Cursor[region:GetParentKey()] = region;
+	end
 	Cursor.UnitPortrait.SetPortrait  = SetPortraitTexture;
-	Cursor.SpellPortrait.SetPortrait = SetPortraitToTexture;
 
 	function Cursor:UpdateUnit(unit)
 		self.unit = unit;
@@ -395,7 +415,7 @@ do 	local IsHarmfulSpell, IsHelpfulSpell = IsHarmfulSpell, IsHelpfulSpell;
 
 	function Cursor:UpdateSpinnerColor(colorObj)
 		if colorObj then
-			self.CastBar:SetVertexColor(colorObj.r, colorObj.g, colorObj.b)
+			self.Spinner:SetVertexColor(colorObj.r, colorObj.g, colorObj.b)
 		end
 	end
 
@@ -407,18 +427,12 @@ do 	local IsHarmfulSpell, IsHelpfulSpell = IsHarmfulSpell, IsHelpfulSpell;
 
 				if self.animateOnShow then
 					self.animateOnShow = false;
-					self.ScaleUp:SetScale(1.5, 1.5)
-					self.ScaleDown:SetScale(1/1.5, 1/1.5)
-					self.ScaleDown:SetDuration(0.5)
 					PlaySound(SOUNDKIT.ACHIEVEMENT_MENU_OPEN)
-				else
-					self.ScaleUp:SetScale(1.15, 1.15)
-					self.ScaleDown:SetScale(1/1.15, 1/1.15)
-					self.ScaleDown:SetDuration(0.2)
 				end
-
-				self.Group:Stop()
-				self.Group:Play()
+				if self.animationEnabled then
+					self.Group:Stop()
+					self.Group:Play()
+				end
 				self:SetAlpha(1)
 			end
 		else
@@ -430,9 +444,9 @@ do 	local IsHarmfulSpell, IsHelpfulSpell = IsHarmfulSpell, IsHelpfulSpell;
 	function Cursor:UpdateCastbar(startCast, endCast)
 		local time = GetTime() * 1000;
 		local progress = (time - startCast) / (endCast - startCast)
-		local resize = Clamp(80 - (22 * (1 - progress)), 58, 80)
-		self.CastBar:SetRotation(-2 * progress * pi)
-		self.CastBar:SetSize(resize, resize)
+		progress = self.isChanneling and 1 - progress or progress;
+		self:SetSpinnerProgress(progress)
+		self:SetSpellProgress(progress)
 	end
 
 	function Cursor:UpdateCastingState(name, texture, isCasting, isChanneling, startTime, endTime)
@@ -440,31 +454,53 @@ do 	local IsHarmfulSpell, IsHelpfulSpell = IsHarmfulSpell, IsHelpfulSpell;
 			self:UpdateSpinnerColor(self.color)
 			self:SetCastingInfo(texture, isCasting, isChanneling, startTime, endTime)
 		else
-			self.CastBar:Hide()
-			self.SpellPortrait:Hide()
+			self:HideCastingInfo()
 		end
 	end
 
 	function Cursor:IsApplicableSpell(spell)
-		return self:GetAttribute('relation') == (IsHarmfulSpell(spell) and 'harm' or IsHelpfulSpell(spell) and 'help');
+		return self:GetAttribute('relation')
+			== (IsHarmfulSpell(spell) and 'harm' or IsHelpfulSpell(spell) and 'help');
+	end
+
+	function Cursor:SetSpellTexture(texture)
+		self.SpellPortrait:SetTexture(texture)
+		self.SpellPortrait:SetShown(not not texture)
+	end
+
+	function Cursor:SetSpellProgress(progress)
+		self.SpellPortrait:SetWidth(PORTRAIT_TEXTURE_SIZE * progress)
+		self.SpellPortrait:SetTexCoord(0, progress, 0, 1)
+		self.LineSheen:SetShown(progress < 1)
+	end
+
+	function Cursor:SetSpinnerProgress(progress)
+		local spinner, size = self.Spinner, Clamp(72 - (14 * (1 - progress)), 58, 72)
+		spinner:SetShown(true)
+		spinner:SetSize(size, size)
+		spinner:SetRotation(-2 * progress * pi)
+	end
+
+	function Cursor:SetCastInfoAlpha(isCasting, isChanneling, isInstantCast)
+		if isCasting or isChanneling then
+			Fade.In(self.Spinner, 0.2, self.Spinner:GetAlpha(), 1)
+			Fade.In(self.SpellPortrait, 0.25, self.SpellPortrait:GetAlpha(), 1)
+		elseif isInstantCast then
+			Flash(self.SpellPortrait, 0.25, 0.25, 0.75, false, 0.25, 0)
+		else
+			Fade.Out(self.Spinner, 0.2, self.Spinner:GetAlpha(), 0)
+			Fade.Out(self.SpellPortrait, 0.25, self.SpellPortrait:GetAlpha(), 0)
+		end
 	end
 
 	function Cursor:SetCastingInfo(texture, isCasting, isChanneling, startTime, endTime)
-		local castBar, spellPortrait = self.CastBar, self.SpellPortrait;
 		if isCasting or isChanneling then
-			castBar:Show()
-			castBar:SetRotation(0)
-			spellPortrait:Show()
-			if texture then
-				spellPortrait:SetPortrait(texture)
-			end
-
-			Fade.In(castBar, 0.2, castBar:GetAlpha(), 1)
-			Fade.In(spellPortrait, 0.25, spellPortrait:GetAlpha(), 1)
+			self:SetSpinnerProgress(0)
+			self:SetSpellTexture(texture)
 		else
-			castBar:Hide()
-			spellPortrait:Hide()
+			self:HideCastingInfo()
 		end
+		self:SetCastInfoAlpha(isCasting, isChanneling)
 
 		self.isCasting     = isCasting;
 		self.isChanneling  = isChanneling;
@@ -473,12 +509,125 @@ do 	local IsHarmfulSpell, IsHelpfulSpell = IsHarmfulSpell, IsHelpfulSpell;
 		self.resetPortrait = isCasting or isChanneling;
 	end
 
-	Cursor.Arrow:SetRotation(rad(45))
+	function Cursor:HideCastingInfo()
+		self.Spinner:Hide()
+		self:SetSpellTexture(nil)
+	end
+
+	function Cursor:UpdatePointer()
+		local animationEnabled = db('raidCursorPointerAnimation')
+		self.Display:SetSize(db('raidCursorPointerSize'))
+		self.Display:SetOffset(db('raidCursorPointerOffset'))
+		self.Display:SetRotationEnabled(animationEnabled)
+		self.Display:SetAnimationEnabled(animationEnabled)
+		self.Display.UnitInformation:SetShown(db('raidCursorPortraitShow'))
+		self.animationSpeed = db('raidCursorTravelTime');
+		self.animationEnabled = animationEnabled;
+	end
+end
+
+db:RegisterCallbacks(Cursor.UpdatePointer, Cursor,
+	'Settings/raidCursorTravelTime',
+	'Settings/raidCursorPointerSize',
+	'Settings/raidCursorPointerOffset',
+	'Settings/raidCursorPointerAnimation',
+	'Settings/raidCursorPortraitShow'
+);
+
+---------------------------------------------------------------
+-- UI Caching
+---------------------------------------------------------------
+local ScanUI;
+do	local EnumerateFrames, GetAttribute, IsProtected = EnumerateFrames, Cursor.GetAttribute, Cursor.IsProtected;
+	ScanUI = CPAPI.Debounce(function(self)
+		if InCombatLockdown() then
+			return CPAPI.Log('Raid cursor scan failed due to combat lockdown. Waiting for combat to end...')
+		end
+		local node = EnumerateFrames()
+		while node do
+			if IsProtected(node) then
+				local unit, action = GetAttribute(node, 'unit'), GetAttribute(node, 'action')
+				if unit and not action then
+					self:CacheNode(node)
+				elseif action and tonumber(action) then
+					self:CacheNode(node)
+				end
+			end
+			node = EnumerateFrames(node)
+		end
+	end, Cursor)
+end
+
+function Cursor:AddFrame(frame)
+	self:SetFrameRef('cachenode', frame)
+	self:Execute([[
+		CACHE[self:GetFrameRef('cachenode')] = true;
+	]])
+end
+
+Cursor.CachedFrames = {[Cursor] = true; [Cursor.Toggle] = true};
+function Cursor:CacheNode(node)
+	if not self.CachedFrames[node] then
+		self.CachedFrames[node] = true;
+		self:AddFrame(node)
+		return true;
+	end
+end
+
+do 	local FILTER_SIGNATURE, DEFAULT_NODE_PREDICATE = 'local unit = unit or ...; return %s;', 'true';
+	-----------------------------------------------------------
+	-- @brief ConsolePortRaidCursor:IsValidNode(node)
+	-- @param node The node to test
+	-- @param unit The unit that the node represents
+	-- @return true if the node is valid, falsy otherwise
+	-----------------------------------------------------------
+	function Cursor:SetFilter(filter)
+		-- Format potential error message to remove the filter signature
+		local function FormatError(error)
+			return WHITE_FONT_COLOR:WrapTextInColorCode(
+				error:gsub(FILTER_SIGNATURE:sub(1, #FILTER_SIGNATURE - 3), ''))
+		end
+		-- Create the script body for the filter
+		local filterPredicate = FILTER_SIGNATURE:format(filter or DEFAULT_NODE_PREDICATE)
+		-- Check if the filter compiles and is a function
+		local test, error = loadstring(filterPredicate)
+		if ( type(test) ~= 'function' ) then
+			filterPredicate = FILTER_SIGNATURE:format(DEFAULT_NODE_PREDICATE)
+			CPAPI.Log('Invalid raid cursor filter:\n%s\nThe default filter has been applied.', FormatError(error))
+		end
+		-- Check if the filter runs without errors
+		test = loadstring(filterPredicate)
+		test, error = pcallwithenv(test, CPAPI.Proxy({
+			owner = self;
+			self  = self;
+			unit  = 'player';
+			node  = PlayerFrame;
+		}, _G))
+		if not test then
+			CPAPI.Log('Raid cursor filter failed a test:\n%s\nThe default filter has been applied.', FormatError(error))
+			filterPredicate = FILTER_SIGNATURE:format(DEFAULT_NODE_PREDICATE)
+		end
+		-- Create the filter function
+		self.IsValidNode = loadstring(('return function(self, node, ...) %s end'):format(filterPredicate))()
+		self:SetAttribute('IsValidNode', filterPredicate)
+	end
 end
 
 ---------------------------------------------------------------
 -- Events
 ---------------------------------------------------------------
+function Cursor:GROUP_ROSTER_UPDATE()
+	if not InCombatLockdown() then
+		ScanUI()
+	end
+end
+
+function Cursor:PLAYER_REGEN_DISABLED()
+	ScanUI.Cancel()
+end
+
+Cursor.PLAYER_REGEN_ENABLED  = Cursor.GROUP_ROSTER_UPDATE;
+Cursor.PLAYER_ENTERING_WORLD = Cursor.GROUP_ROSTER_UPDATE;
 
 function Cursor:UNIT_HEALTH(unit)
 	self:UpdateHealthForUnit(unit)
@@ -490,8 +639,8 @@ function Cursor:PLAYER_TARGET_CHANGED()
 	end
 end
 
+-- Casting and channeling events
 do 	local UnitChannelInfo, UnitCastingInfo = UnitChannelInfo, UnitCastingInfo;
-	local Flash = db.Alpha.Flash;
 
 	function Cursor:UNIT_SPELLCAST_CHANNEL_START(unit)
 		local name, _, texture, startTime, endTime = UnitChannelInfo(unit)
@@ -500,7 +649,7 @@ do 	local UnitChannelInfo, UnitCastingInfo = UnitChannelInfo, UnitCastingInfo;
 
 	function Cursor:UNIT_SPELLCAST_CHANNEL_STOP()
 		self.isChanneling = false;
-		Fade.Out(self.CastBar, 0.2, self.CastBar:GetAlpha(), 0)
+		self:SetCastInfoAlpha(self.isCasting, self.isChanneling)
 	end
 
 	function Cursor:UNIT_SPELLCAST_START(unit)
@@ -510,22 +659,18 @@ do 	local UnitChannelInfo, UnitCastingInfo = UnitChannelInfo, UnitCastingInfo;
 
 	function Cursor:UNIT_SPELLCAST_STOP()
 		self.isCasting = false;
-		Fade.Out(self.CastBar, 0.2, self.CastBar:GetAlpha(), 0)
-		Fade.Out(self.SpellPortrait, 0.25, self.SpellPortrait:GetAlpha(), 0)
+		self:SetCastInfoAlpha(self.isCasting, self.isChanneling)
 	end
 
 	function Cursor:UNIT_SPELLCAST_SUCCEEDED(_, _, spellID)
-		local name, _, icon = GetSpellInfo(spellID)
-		if name and icon then
+		local name, _, texture = GetSpellInfo(spellID)
+		if name and texture then
 			if self:IsApplicableSpell(name) then
-				local spellPortrait = self.SpellPortrait;
-				spellPortrait:SetPortrait(icon)
+				self:SetSpellTexture(texture)
 				-- instant cast spell
 				if not self.isCasting and not self.isChanneling then
-					Flash(spellPortrait, 0.25, 0.25, 0.75, false, 0.25, 0)
-				else
-					spellPortrait:Show()
-					Fade.Out(spellPortrait, 0.25, spellPortrait:GetAlpha(), 0)
+					self:SetSpellProgress(1)
+					self:SetCastInfoAlpha(false, false, true)
 				end
 			end
 		end

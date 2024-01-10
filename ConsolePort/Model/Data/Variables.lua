@@ -240,14 +240,41 @@ db:Register('Variables', {
 		advd = true;
 	};
 	raidCursorFilter = _{String(nil);
-		name = '過濾條件';
-		desc = '用過濾條件來尋找團隊游標框架。';
-		note = BLUE'node' .. ' 是目前正在審查的框架。';
+		name = '篩選條件';
+		desc = '尋找團隊游標框架的篩選條件，以布林表達式表示。';
+		note = BLUE'node' .. ' 是當前考慮的框架。\n'
+			.. BLUE'unit' .. ' 是當前框架的單位ID。';
 		advd = true;
 	};
 	raidCursorWrapDisable = _{Bool(false);
-		name = 'Disable Wrapping';
-		desc = 'Prevent the cursor from wrapping when navigating.';
+		name = '停用繞行';
+		desc = '在框架中移動時，防止游標繞行。';
+		advd = true;
+	};
+	raidCursorPortraitShow = _{Bool(true);
+		name = '顯示頭像';
+		desc = '顯示當前單位的頭像，包括血量百分比和可用法術施放次數。';
+		advd = true;
+	};
+	raidCursorPointerAnimation = _{Bool(true);
+		name = '啟用動畫效果';
+		desc = '指標箭頭隨著移動方向旋轉，頭像在移動時放大縮小。';
+		advd = true;
+	};
+	raidCursorPointerSize = _{Number(22, 2, true);
+		name = '箭頭大小';
+		desc = '指針箭頭的大小，以像素為單位。';
+		advd = true;
+	};
+	raidCursorPointerOffset = _{Number(-2, 1);
+		name = '箭頭位置';
+		desc = '指標箭頭的偏移量，以選定節點中心為基準，以像素為單位。';
+		advd = true;
+	};
+	raidCursorTravelTime = _{Range(4, 1, 1, 10);
+		name = '轉換時間';
+		desc = '游標從一個節點轉換到另一個節點需要多長時間。';
+		note = '數值愈高愈慢';
 		advd = true;
 	};
 	--------------------------------------------------------------------------------------------------------
@@ -258,8 +285,8 @@ db:Register('Variables', {
 		desc = '啟用介面游標。停用時會使用滑鼠操作的介面互動方式。';
 	};
 	UIWrapDisable = _{Bool(false);
-		name = 'Disable Wrapping';
-		desc = 'Prevent the cursor from wrapping when navigating.';
+		name = '停用繞行';
+		desc = '瀏覽介面時，防止游標繞行。';
 		advd = true;
 	};
 	--------------------------------------------------------------------------------------------------------
