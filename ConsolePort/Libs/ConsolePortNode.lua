@@ -65,7 +65,7 @@ local GetRectLevelIndex
 local IterateCache
 local IterateRects
 -- Rect calculations
-local GetCenter
+local GetHitRectCenter
 local GetCenterPos
 local GetCenterScaled
 local DoNodesIntersect
@@ -228,7 +228,7 @@ function IsDrawn(node, super)
 	if ( PointInRange(nX, 0, mX) and PointInRange(nY, 0, mY) ) then
 		-- assert node isn't clipped inside a scroll child
 		if super and not IsObjectType(node, 'Slider') then
-			return DoNodesIntersect(node, super) --or UIDoFramesIntersect(node, scrollChild)
+			return DoNodesIntersect(node, super)
 		else
 			return true
 		end
@@ -405,7 +405,7 @@ local function nrmlz(node, effScale, cmpScale, func, ...)
 end
 ---------------------------------------------------------------
 
-function GetCenter(node)
+function GetHitRectCenter(node)
 	local x, y, w, h = GetRect(node)
 	if not x then return end
 	local l, r, t, b = div2(GetHitRectInsets(node))
@@ -413,7 +413,7 @@ function GetCenter(node)
 end
 
 function GetCenterScaled(node)
-	local x, y = GetCenter(node)
+	local x, y = GetHitRectCenter(node)
 	if not x then return end
 	local scale = GetEffectiveScale(node) / BOUNDS.z;
 	return x * scale, y * scale
@@ -422,17 +422,17 @@ end
 function GetCenterPos(node)
 	local x, y = GetCenter(node)
 	if not x then return end
-	local l, b = GetCenter(node)
+	local l, b = GetHitRectCenter(node)
 	return (l-x), (b-y)
 end
 
 function DoNodesIntersect(n1, n2)
 	local left1, right1, top1, bottom1 = nrmlz(
-		n1, n1:GetEffectiveScale(), BOUNDS.z,
-		n1.GetLeft, n1.GetRight, n1.GetTop, n1.GetBottom);
+		n1, GetEffectiveScale(n1), BOUNDS.z,
+		GetLeft, GetRight, GetTop, GetBottom);
 	local left2, right2, top2, bottom2 = nrmlz(
-		n2, n2:GetEffectiveScale(), BOUNDS.z,
-		n2.GetLeft, n2.GetRight, n2.GetTop, n2.GetBottom);
+		n2, GetEffectiveScale(n2), BOUNDS.z,
+		GetLeft, GetRight, GetTop, GetBottom);
 	return  (left1   <  right2)
 		and (right1  >   left2)
 		and (bottom1 <    top2)
@@ -454,8 +454,8 @@ end
 function DoNodeAndRectIntersect(node, rect)
 	local x, y = GetCenterScaled(node)
 	local scale, limit = GetEffectiveScale(rect), BOUNDS.z;
-	return PointInRange(x, nrmlz(rect, scale, limit, rect.GetLeft, rect.GetRight)) and
-		   PointInRange(y, nrmlz(rect, scale, limit, rect.GetBottom, rect.GetTop))
+	return PointInRange(x, nrmlz(rect, scale, limit, GetLeft, GetRight)) and
+		   PointInRange(y, nrmlz(rect, scale, limit, GetBottom, GetTop))
 end
 
 ---------------------------------------------------------------
