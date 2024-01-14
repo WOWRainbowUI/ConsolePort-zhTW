@@ -326,7 +326,7 @@ db:Register('Variables', {
 		desc = '快速鍵提示的垂直位置偏移，以像素為單位。';
 		advd = true;
 	};
-	unitHotkeyTokens = _{String('party1-4; player; raid1-40; boss1-4; arena1-5; party1-4pet; raid1-40target');
+	unitHotkeyTokens = _{String('raid1-9; raid10-40; party1-4; player; boss1-4; arena1-5; party1-4pet; raid1-40target');
 		name = '可互動單位';
 		desc = '設定可互動單位的條件，每種類型使用分號分隔。';
 		note = 'E.g. '..BLUE('party1-4')..'; '..BLUE('player')..' will match party1, party2, party3, party4, and player.';
