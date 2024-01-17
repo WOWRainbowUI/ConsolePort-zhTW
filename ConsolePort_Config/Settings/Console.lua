@@ -150,6 +150,7 @@ function DeviceSelect:Update()
 end
 
 function DeviceSelect:OnClick()
+	CPIndexButtonMixin.Uncheck(self)
 	local device = self:GetCurrentDevice()
 	if device then
 		local disclaimer = '\n\n'..'不會影響你的按鈕綁定、介面設定或系統設定。';
@@ -194,6 +195,8 @@ function DeviceSelect:OnClick()
 		end
 	end
 end
+
+DeviceSelect.GetChecked = nop;
 
 ---------------------------------------------------------------
 -- Console
