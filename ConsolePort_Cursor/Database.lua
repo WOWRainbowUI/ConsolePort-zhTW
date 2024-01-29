@@ -167,27 +167,26 @@ env.Attributes = {
 ---------------------------------------------------------------
 env.ForbiddenActions = CPAPI.Proxy({
 	['FocusUnit()'] = ([[
-		While the interface cursor is active, focus cannot reliably be set from unit dropdown menus.
+		介面游標顯示時，無法可靠的從單位的下拉選單設定專注目標。
 
-		Please use another method to set focus, such as the %s binding, a /focus macro or the raid cursor.
+		請使用其他方式設定專注目標，例如 %s 按鈕綁定， 巨集 /focus 或團隊游標。
 	]]):format(BLUE_FONT_COLOR:WrapTextInColorCode(BINDING_NAME_FOCUSTARGET));
 	['ClearFocus()'] = ([[
-		While the interface cursor is active, focus cannot reliably be cleared from unit dropdown menus.
+		介面游標顯示時，無法可靠的從單位的下拉選單清除專注目標。
 
-		Please use another method to clear focus, such as the %s binding, a /focus macro or the raid cursor.
+		請使用其他方式清除專注目標，例如 %s 按鈕綁定， 巨集 /focus 或團隊游標。
 	]]):format(BLUE_FONT_COLOR:WrapTextInColorCode(BINDING_NAME_FOCUSTARGET));
 	['CastSpellByID()'] = [[
-		While the interface cursor is active, a few actions are not possible to perform reliably.
-		It appears you tried to cast a spell from a source that has been tainted by the
-		interface cursor.
+		介面游標顯示時，有幾個操作無法可靠地執行。
+		看起來你試圖施放一個法術，但來源已被介面游標污染。
 
-		Please use another method to cast this spell, such as using a macro or your action bars.
+		請使用其他方式施放法術，例如使用巨集或快捷列。
 	]];
 }, function()
 	return [[
-		While the interface cursor is active, a few actions are not possible to perform reliably.
-		It appears you tried to perform an action that has been blocked due to taint from the cursor.
+		介面游標顯示時，有幾個操作無法可靠地執行。
+		看起來你嘗試執行的動作因為游標的污染而被阻止。
 
-		You can most likely ignore this message, but a reload may be required if your UI is not working properly.
+		通常可以忽略此訊息，但如果使用者介面無法正常運作，可能需要重新載入。
 	]];
 end);
