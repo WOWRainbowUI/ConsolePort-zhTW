@@ -17,8 +17,23 @@ local function CacheAvailableBinding(bindings, prune, binding, category, key, ..
 	return CacheAvailableBinding(bindings, prune, binding, category, ...)
 end
 
+local function GetGlobalCategoryName(category)
+	local name = _G[category] or category;
+	if type(name) == 'string' then
+		return name
+	end
+	return category
+end
+
+local function GetGlobalBindingName(binding)
+	local name = _G[('BINDING_NAME_%s'):format(binding) or binding]
+	if type(name) == 'string' then
+		return name
+	end
+end
+
 local function GetRealBindingName(binding)
-	return _G[('BINDING_NAME_%s'):format(binding) or binding]
+	return GetGlobalBindingName(binding)
 		or (select(3, env.db.Bindings:GetDescriptionForBinding(binding)))
 		or GetBindingName(binding)
 end
@@ -74,7 +89,7 @@ local function ShowBindingDropdown(frame, level, menuList)
 
 	local bindings = {}
 	for category, set in pairs(allBindings) do
-		local title = _G[category] or category
+		local title = GetGlobalCategoryName(category)
 		local subsets = {DivideTable(set, 26)}
 		if ( #subsets == 1 ) then
 			bindings[title] = subsets[1];
@@ -178,6 +193,8 @@ function HANDLER:SetFrame(owner)
 	self.btn = owner.plainID;
 	self.mod = mod;
 
+	-- HACK: the lib has a hook which causes an error due to bad init
+	LDD.UIDropDownMenu_HandleGlobalMouseEvent = nop;
 	LDD:UIDropDownMenu_Initialize(self, ShowBindingDropdown)
 	LDD:ToggleDropDownMenu(nil, nil, self, 'cursor')
 end
@@ -193,12 +210,14 @@ function env:OpenBindingDropdown(frame)
 		ConsolePort:AddInterfaceCursorFrame('L_DropDownList2')
 		HANDLER.initialized = true;
 		if L_DropDownList1.Backdrop then
-			L_DropDownList1.Backdrop:SetBackdrop(CPAPI.Backdrops.Frame)
-			L_DropDownList1.Backdrop:SetBackdropColor(0, 0, 0, 0.75)
+			Mixin(L_DropDownList1.Backdrop, BackdropTemplateMixin)
+			BackdropTemplateMixin.SetBackdrop(L_DropDownList1.Backdrop, CPAPI.Backdrops.Frame)
+			BackdropTemplateMixin.SetBackdropColor(L_DropDownList1.Backdrop, 0, 0, 0, 0.75)
 		end
 		if L_DropDownList2.Backdrop then
-			L_DropDownList2.Backdrop:SetBackdrop(CPAPI.Backdrops.Frame)
-			L_DropDownList2.Backdrop:SetBackdropColor(0, 0, 0, 0.75)
+			Mixin(L_DropDownList2.Backdrop, BackdropTemplateMixin)
+			BackdropTemplateMixin.SetBackdrop(L_DropDownList2.Backdrop, CPAPI.Backdrops.Frame)
+			BackdropTemplateMixin.SetBackdropColor(L_DropDownList2.Backdrop, 0, 0, 0, 0.75)
 		end
 	end
 end

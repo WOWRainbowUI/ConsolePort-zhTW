@@ -8,15 +8,15 @@ do  local DELETE_ITEM = CopyTable(StaticPopupDialogs.DELETE_ITEM);
 	DELETE_ITEM.timeout = 5; -- also add a timeout
 	StaticPopupDialogs.DELETE_GOOD_ITEM = DELETE_ITEM;
 
-	local DELETE_QUEST = CopyTable(StaticPopupDialogs.DELETE_QUEST_ITEM);
-	DELETE_QUEST.timeout = 5; -- also add a timeout
-	StaticPopupDialogs.DELETE_GOOD_QUEST_ITEM = DELETE_QUEST;
+	local DELETE_QUEST_ITEM = CopyTable(StaticPopupDialogs.DELETE_QUEST_ITEM);
+	DELETE_QUEST_ITEM.timeout = 5; -- also add a timeout
+	StaticPopupDialogs.DELETE_GOOD_QUEST_ITEM = DELETE_QUEST_ITEM;
 end
 
 -- Add reload option to addon action forbidden
-do local popup = StaticPopupDialogs.ADDON_ACTION_FORBIDDEN;
-	popup.button3 = 'Reload';
-	popup.OnAlt = ReloadUI;
+do local ADDON_ACTION_FORBIDDEN = StaticPopupDialogs.ADDON_ACTION_FORBIDDEN;
+	ADDON_ACTION_FORBIDDEN.button3 = L'Reload';
+	ADDON_ACTION_FORBIDDEN.OnAlt = ReloadUI;
 end
 
 -- Remove experimental cvar confirmation:
@@ -59,9 +59,12 @@ end
 
 -- Use color picker frame with sticks
 if ColorPickerFrame then
+	local OkayButton   = ColorPickerOkayButton or ColorPickerFrame.Footer.OkayButton;
+	local CancelButton = ColorPickerCancelButton or ColorPickerFrame.Footer.CancelButton; 
+
 	local controls = {
-		PAD1 = ColorPickerOkayButton;
-		PAD2 = ColorPickerCancelButton;
+		PAD1 = OkayButton;
+		PAD2 = CancelButton;
 	};
 	local tooltipLines = {
 		PADLSTICKUP    = CreateColor(CPAPI.HSV2RGB(270, 0.5, 1)):WrapTextInColorCode(L'Purple');
@@ -78,39 +81,53 @@ if ColorPickerFrame then
 	end
 
 	-- Handle color change
-	local delta, lightness, oldNode = 40, 1;
+	local delta, lightness, opacityInversion, oldNode = 40, 1, ColorPickerFrameMixin and 1 or -1;
 
-	local function ColorPickerStickToRGB(self, x, y)
+	local SetColorRGB, GetColorRGB, SetOpacity, GetOpacity;
+	if ColorPickerFrameMixin then
+		SetColorRGB = GenerateClosure(ColorPickerFrame.Content.ColorPicker.SetColorRGB,   ColorPickerFrame.Content.ColorPicker)
+		GetColorRGB = GenerateClosure(ColorPickerFrame.Content.ColorPicker.GetColorRGB,   ColorPickerFrame.Content.ColorPicker)
+		SetOpacity  = GenerateClosure(ColorPickerFrame.Content.ColorPicker.SetColorAlpha, ColorPickerFrame.Content.ColorPicker)
+		GetOpacity  = GenerateClosure(ColorPickerFrame.Content.ColorPicker.GetColorAlpha, ColorPickerFrame.Content.ColorPicker)
+	else
+		SetColorRGB = GenerateClosure(ColorPickerFrame.SetColorRGB, ColorPickerFrame)
+		GetColorRGB = GenerateClosure(ColorPickerFrame.GetColorRGB, ColorPickerFrame)
+		SetOpacity  = GenerateClosure(OpacitySliderFrame.SetValue,  OpacitySliderFrame)
+		GetOpacity  = GenerateClosure(OpacitySliderFrame.GetValue,  OpacitySliderFrame)
+	end
+
+
+	local function ColorPickerStickToRGB(x, y)
 		local radius, theta = CPAPI.XY2Polar(x, y)
 		local deg = CPAPI.Rad2Deg(theta)
 		local r, g, b = CPAPI.HSV2RGB(deg, radius, lightness)
-		self:SetColorRGB(r, g, b)
+		SetColorRGB(r, g, b)
 	end
 
-	local function ColorPickerStickSaturation(self, y)
-		local r, g, b = self:GetColorRGB()
+	local function ColorPickerStickSaturation(y)
+		local r, g, b = GetColorRGB()
 		lightness = Clamp(lightness + y / delta, 0, 1);
 		-- Handle case where we're picking a shade of gray
 		if (r == g and g == b) then
-			self:SetColorRGB(lightness, lightness, lightness)
+			SetColorRGB(lightness, lightness, lightness)
 		end
 	end
 
-	local function OpacitySliderStickValue(self, x)
-		local opacityDelta = -x / delta;
-		local a = self:GetValue()
-		self:SetValue(a + opacityDelta)
+	local function OpacitySliderStickValue(x)
+		local opacityDelta = x * opacityInversion / delta;
+		local a = GetOpacity()
+		SetOpacity(a + opacityDelta)
 	end
 
 	-- Scripts
 	ColorPickerFrame:SetScript('OnGamePadStick', function(self, stick, x, y, len)
 		if ( stick == 'Left' ) then
-			ColorPickerStickToRGB(self, x, y)
+			ColorPickerStickToRGB(x, y)
 		elseif ( stick == 'Right' and len > .1 ) then
-			if (math.abs(x) > math.abs(y) and OpacitySliderFrame and OpacitySliderFrame:IsShown()) then
-				OpacitySliderStickValue(OpacitySliderFrame, x)
+			if (math.abs(x) > math.abs(y)) then
+				OpacitySliderStickValue(x)
 			else
-				ColorPickerStickSaturation(self, y)
+				ColorPickerStickSaturation(y)
 			end
 		end
 	end)
@@ -121,7 +138,7 @@ if ColorPickerFrame then
 	end)
 	ColorPickerFrame:HookScript('OnShow', function(self)
 		oldNode = ConsolePort:GetCursorNode()
-		ConsolePort:SetCursorNodeIfActive(ColorPickerOkayButton, true)
+		ConsolePort:SetCursorNodeIfActive(OkayButton, true)
 
 		local device = db('Gamepad/Active')
 		if device then
@@ -194,7 +211,6 @@ local Handler = CPAPI.CreateEventHandler({'Frame', '$parentConvenienceHandler', 
 	'MERCHANT_CLOSED';
 	'BAG_UPDATE_DELAYED';
 	'QUEST_AUTOCOMPLETE';
-	'ADDON_ACTION_FORBIDDEN';
 }, {
 	SellJunkHelper = function(item)
 		if (C_Item.GetItemQuality(item) == Enum.ItemQuality.Poor) then
@@ -234,37 +250,3 @@ end
 
 db:RegisterCallback('Settings/keyboardEnable', GenerateClosure(TryLoadModule, 'keyboardEnable', 'ConsolePort_Keyboard'))
 db:RegisterCallback('Settings/UIenableCursor', GenerateClosure(TryLoadModule, 'UIenableCursor', 'ConsolePort_Cursor'))
-
--- Replace popup messages for forbidden actions which cannot be fixed by the addon
-do local ForbiddenActions = {
-		['FocusUnit()'] = ([[
-			While the interface cursor is active, focus cannot reliably be set from unit dropdown menus.
-
-			Please use another method to set focus, such as the %s binding, a /focus macro or the raid cursor.
-		]]):format(BLUE_FONT_COLOR:WrapTextInColorCode(BINDING_NAME_FOCUSTARGET));
-		['ClearFocus()'] = ([[
-			While the interface cursor is active, focus cannot reliably be cleared from unit dropdown menus.
-
-			Please use another method to clear focus, such as the %s binding, a /focus macro or the raid cursor.
-		]]):format(BLUE_FONT_COLOR:WrapTextInColorCode(BINDING_NAME_FOCUSTARGET));
-		['CastSpellByID()'] = [[
-			While the interface cursor is active, a few actions are not possible to perform reliably.
-			It appears you tried to cast a spell from a source that has been tainted by the
-			interface cursor.
-
-			Please use another method to cast this spell, such as using a macro or your action bars.
-		]];
-	};
-
-	function Handler:ADDON_ACTION_FORBIDDEN(addOnName, func)
-		if ( addOnName == name and ForbiddenActions[func] ) then
-			local message = CPAPI.FormatLongText(db.Locale(ForbiddenActions[func]))
-			local popup = StaticPopup_FindVisible('ADDON_ACTION_FORBIDDEN')
-			if popup then
-				_G[popup:GetName()..'Text']:SetText(message)
-				popup.button1:SetEnabled(false)
-				StaticPopup_Resize(popup, 'ADDON_ACTION_FORBIDDEN')
-			end
-		end
-	end
-end
