@@ -1,6 +1,6 @@
 # Console Port
 
-## [2.7.25](https://github.com/seblindfors/ConsolePort/tree/2.7.25) (2024-01-28)
-[Full Changelog](https://github.com/seblindfors/ConsolePort/compare/2.7.24...2.7.25) [Previous Releases](https://github.com/seblindfors/ConsolePort/releases)
+## [2.7.27](https://github.com/seblindfors/ConsolePort/tree/2.7.27) (2024-02-06)
+[Full Changelog](https://github.com/seblindfors/ConsolePort/compare/2.7.26...2.7.27) [Previous Releases](https://github.com/seblindfors/ConsolePort/releases)
 
-- Account for ranged inventory type removed in Retail  
+- Fix issue where unit hotkeys sometimes do not refresh  
