@@ -91,14 +91,14 @@ function ItemMenu:SetCommands()
 	end
 
 	if self:IsSellableItem() then
-		self:AddCommand('Sell', 'Sell')
+		self:AddCommand('賣出', 'Sell')
 	end
 
 	if self:IsSplittableItem() then
-		self:AddCommand(L'Split stack', 'Split')
+		self:AddCommand('拆分', 'Split')
 	end
 
-	self:AddCommand(L'Pick up', 'Pickup')
+	self:AddCommand('拿起', 'Pickup')
 	self:AddCommand(DELETE, 'Delete')
 end
 
