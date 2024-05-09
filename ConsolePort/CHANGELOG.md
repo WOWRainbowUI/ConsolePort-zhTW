@@ -1,6 +1,6 @@
 # Console Port
 
-## [2.7.32](https://github.com/seblindfors/ConsolePort/tree/2.7.32) (2024-04-17)
-[Full Changelog](https://github.com/seblindfors/ConsolePort/compare/2.7.31...2.7.32) [Previous Releases](https://github.com/seblindfors/ConsolePort/releases)
+## [2.7.35](https://github.com/seblindfors/ConsolePort/tree/2.7.35) (2024-05-08)
+[Full Changelog](https://github.com/seblindfors/ConsolePort/compare/2.7.34...2.7.35) [Previous Releases](https://github.com/seblindfors/ConsolePort/releases)
 
-- Fix config TOC version  
+- Lazy fix for broken XP bar on Retail  

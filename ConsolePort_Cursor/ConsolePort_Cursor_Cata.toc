@@ -1,8 +1,9 @@
-## Interface: 20504
+## Interface: 40400
 ## IconTexture: Interface\AddOns\ConsolePort\Assets\Textures\Logo\CP_Thumb
-## Title: Console Port |cff69ccf0World|r
-## Notes: World augmentation module: custom loot frame, new ability prompts
+## Title: Console Port |cff69ccf0Cursor|r
+## Notes: Interface cursor module
 ## RequiredDeps: ConsolePort
+## LoadOnDemand: 1
 
 ## Author: Sebastian Lindfors
 ## X-Website: https://github.com/seblindfors/ConsolePort
@@ -11,5 +12,15 @@
 ## X-WoWI-ID: 23536
 ## X-Wago-ID: LvNAYjNo
 
-LootFrame\LootFrame.xml
-TempAbility\TempAbility.xml
+## SavedVariables: ConsolePortUIStack
+
+Database.lua
+
+Controller\Stack.lua
+Controller\Hooks.lua
+Controller\Mods.lua
+Controller\Scripts.lua
+Controller\Scroll.lua
+
+View\Cursor.xml
+View\Cursor.lua
