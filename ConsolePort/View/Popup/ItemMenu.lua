@@ -164,9 +164,9 @@ function ItemMenu:AddUtilityRingCommand()
 	for key in db.table.spairs(db.Utility.Data) do
 		local isUniqueAction, existingIndex = db.Utility:IsUniqueAction(key, action)
 		if isUniqueAction then
-			self:AddCommand(L('Add to %s', db.Utility:ConvertSetIDToDisplayName(key)), 'RingBind', {key, action})
+			self:AddCommand(L('加入%s', db.Utility:ConvertSetIDToDisplayName(key)), 'RingBind', {key, action})
 		elseif existingIndex then
-			self:AddCommand(L('Remove from %s', db.Utility:ConvertSetIDToDisplayName(key)), 'RingClear', {key, action})
+			self:AddCommand(L('移出%s', db.Utility:ConvertSetIDToDisplayName(key)), 'RingClear', {key, action})
 		end
 	end
 end

@@ -307,8 +307,8 @@ end
 
 function Utility:ConvertSetIDToDisplayName(setID)
 	local L = db.Locale;
-	return (setID == DEFAULT_SET and L'Utility Ring')
-		or (tonumber(setID) and L('Ring |cFF00FFFF%s|r', setID))
+	return (setID == DEFAULT_SET and L'工具環')
+		or (tonumber(setID) and L('環形選單 |cFF00FFFF%s|r', setID))
 		or (tostring(setID));
 end
 
