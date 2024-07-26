@@ -1,5 +1,5 @@
 ---------------------------------------------------------------
--- Secure unit frames targeting cursor 
+-- Secure unit frames targeting cursor
 ---------------------------------------------------------------
 -- Creates a secure cursor that is used to iterate over unit frames
 -- and select units based on where the frame is drawn on screen.
@@ -27,17 +27,15 @@ Cursor:WrapScript(Cursor.Toggle, 'PreClick', [[
 		control:RunAttribute('ToggleCursor', not enabled)
 	end
 	if control:GetAttribute('usefocus') then
+		self:SetAttribute('type', 'focus')
 		if enabled then
-			self:SetAttribute('type', 'focus')
 			self:SetAttribute('unit', control:GetAttribute('cursorunit'))
 		else
-			self:SetAttribute('type', 'macro')
-			self:SetAttribute('macrotext', '/clearfocus')
+			self:SetAttribute('unit', 'none')
 		end
 	else
 		self:SetAttribute('type', nil)
 		self:SetAttribute('unit', nil)
-		self:SetAttribute('macrotext', nil)
 	end
 ]])
 
@@ -78,10 +76,21 @@ Cursor:CreateEnvironment({
 					NODES[node] = true;
 				end
 			elseif action and tonumber(action) then
-				if ( ACTIONS[node] == nil ) then
-					ACTIONS[node] = unit or false;
+				local parent = node:GetParent()
+				local owner  = parent and parent:GetName() or 1;
+				self::AddOwner(owner)
+				if ( ACTIONS[owner][node] == nil ) then
+					ACTIONS[owner][node] = unit or false;
 				end
 			end
+		end
+	]];
+	AddOwner = [[
+		local owner = ...;
+		if not ACTIONS[owner] then
+			ACTIONS[owner] = newtable();
+			HELPFUL[owner] = newtable();
+			HARMFUL[owner] = newtable();
 		end
 	]];
 	UpdateNodes = [[
@@ -95,26 +104,39 @@ Cursor:CreateEnvironment({
 	]];
 	SetBaseBindings = [[
 		local modifier = ...;
-		modifier = modifier and modifier or '';
+		modifier = modifier or '';
 		for buttonID, keyID in pairs(BUTTONS) do
 			self:SetBindingClick(self:GetAttribute('priorityoverride'), modifier..keyID, self, buttonID)
 		end
 	]];
-	RefreshActions = [[
-		HELPFUL = wipe(HELPFUL)
-		HARMFUL = wipe(HARMFUL)
+	RefreshOwners = [[
+		for owner in pairs(ACTIONS) do
+			self::RefreshOwner(owner)
+		end
+	]];
+	RefreshOwner = [[
+		local owner = ...;
+		local buttons, helpful, harmful = ACTIONS[owner], HELPFUL[owner], HARMFUL[owner];
 
-		for actionButton in pairs(ACTIONS) do
+		if not buttons then
+			return false;
+		end
+
+		wipe(helpful)
+		wipe(harmful)
+
+		for actionButton in pairs(buttons) do
 			local action = actionButton:GetAttribute('action')
 			if self::IsHelpfulAction(action) then
-				HELPFUL[actionButton] = true;
+				helpful[actionButton] = true;
 			elseif self::IsHarmfulAction(action) then
-				HARMFUL[actionButton] = true;
+				harmful[actionButton] = true;
 			else
-				HELPFUL[actionButton] = true;
-				HARMFUL[actionButton] = true;
+				helpful[actionButton] = true;
+				harmful[actionButton] = true;
 			end
 		end
+		return true;
 	]];
 	ClearFocusUnit = [[
 		UnregisterStateDriver(self, 'unitexists')
@@ -124,38 +146,61 @@ Cursor:CreateEnvironment({
 	PrepareReroute = [[
 		local reroute = self:GetAttribute('useroute')
 		if reroute then
-			for action, unit in pairs(ACTIONS) do
-				action:SetAttribute('unit', unit)
-				if action:GetAttribute('backup-checkselfcast') ~= nil then
-					action:SetAttribute('checkselfcast', action:GetAttribute('backup-checkselfcast'))
-					action:SetAttribute('backup-checkselfcast', nil)
-				end
-				if action:GetAttribute('backup-checkfocuscast') ~= nil then
-					action:SetAttribute('checkfocuscast', action:GetAttribute('backup-checkfocuscast'))
-					action:SetAttribute('backup-checkfocuscast', nil)
+			if widget then
+				self::ResetOwnerReroute(widget)
+			else
+				for owner in pairs(ACTIONS) do
+					self::ResetOwnerReroute(owner)
 				end
 			end
 		end
 		return reroute;
 	]];
+	ResetOwnerReroute = [[
+		local owner = ...;
+		for action, unit in pairs(ACTIONS[owner]) do
+			action:SetAttribute('unit', unit or nil)
+			if action:GetAttribute('backup-checkselfcast') ~= nil then
+				action:SetAttribute('checkselfcast', action:GetAttribute('backup-checkselfcast'))
+				action:SetAttribute('backup-checkselfcast', nil)
+			end
+			if action:GetAttribute('backup-checkfocuscast') ~= nil then
+				action:SetAttribute('checkfocuscast', action:GetAttribute('backup-checkfocuscast'))
+				action:SetAttribute('backup-checkfocuscast', nil)
+			end
+		end
+	]];
 	RerouteUnit = [[
 		local unit = ...;
-		local actionset;
+		local relation;
+		actionset = nil;
+
 		if PlayerCanAttack(unit) then
-			self:SetAttribute('relation', 'harm')
-			actionset = HARMFUL;
+			relation, actionset = 'harm', HARMFUL;
 		elseif PlayerCanAssist(unit) then
-			self:SetAttribute('relation', 'help')
-			actionset = HELPFUL;
+			relation , actionset = 'help', HELPFUL;
 		end
+		self:SetAttribute('relation', relation)
+
 		if actionset then
-			for action in pairs(actionset) do
-				action:SetAttribute('unit', unit)
-				action:SetAttribute('backup-checkselfcast', action:GetAttribute('checkselfcast'))
-				action:SetAttribute('backup-checkfocuscast', action:GetAttribute('checkfocuscast'))
-				action:SetAttribute('checkselfcast', nil)
-				action:SetAttribute('checkfocuscast', nil)
+			if widget then
+				self::RerouteOwner(widget, unit)
+			else
+				for owner in pairs(ACTIONS) do
+					self::RerouteOwner(owner, unit)
+				end
 			end
+		end
+	]];
+	RerouteOwner = [[
+		local owner, unit = ...;
+		local buttons = actionset[owner];
+		for action in pairs(buttons) do
+			action:SetAttribute('unit', unit)
+			action:SetAttribute('backup-checkselfcast', action:GetAttribute('checkselfcast'))
+			action:SetAttribute('backup-checkfocuscast', action:GetAttribute('checkfocuscast'))
+			action:SetAttribute('checkselfcast', nil)
+			action:SetAttribute('checkfocuscast', nil)
 		end
 	]];
 	PostNodeSelect = [[
@@ -187,7 +232,7 @@ Cursor:CreateEnvironment({
 		if enabled then
 			self::SetBaseBindings(self:GetAttribute('navmodifier'))
 			self::UpdateNodes()
-			self::RefreshActions()
+			self::RefreshOwners()
 			self::SelectNewNode(0)
 			self:Show()
 		else
@@ -209,9 +254,19 @@ Cursor:CreateEnvironment({
 	]];
 	ActionPageChanged = [[
 		if enabled then
-			self::RefreshActions()
+			self::RefreshOwners()
 			self::SelectNewNode(0)
 		end
+	]];
+	OwnerChanged = [[
+		widget = ...;
+		if enabled then
+			self::SetBaseBindings(self:GetAttribute('navmodifier'))
+			if self::RefreshOwner(widget) then
+				self::PostNodeSelect()
+			end
+		end
+		widget = nil;
 	]];
 	IsHelpfulMacro = [[
 		local body = ...
@@ -270,7 +325,7 @@ function Cursor:OnDataLoaded()
 	self:Execute('wipe(BUTTONS)')
 	for direction, varID in pairs(self.Directions) do
 		self:Execute(('BUTTONS[%q] = %q'):format(direction, db(varID)))
-	end 
+	end
 
 	self:RegisterEvent('ADDON_LOADED')
 	self.ADDON_LOADED = self.GROUP_ROSTER_UPDATE;
@@ -282,7 +337,7 @@ function Cursor:OnUpdateOverrides(isPriority)
 	end
 end
 
-db:RegisterSafeCallbacks(Cursor.OnDataLoaded, Cursor, 
+db:RegisterSafeCallbacks(Cursor.OnDataLoaded, Cursor,
 	'Settings/raidCursorScale',
 	'Settings/raidCursorMode',
 	'Settings/raidCursorAutoFocus',
@@ -368,7 +423,7 @@ Mixin(CPAPI.EventHandler(Cursor, {
 local Fade, Flash = db.Alpha.Fader, db.Alpha.Flash;
 local PORTRAIT_TEXTURE_SIZE = 46;
 
-do 	local IsHarmfulSpell, IsHelpfulSpell = IsHarmfulSpell, IsHelpfulSpell;
+do 	local IsSpellHarmful, IsSpellHelpful = CPAPI.IsSpellHarmful, CPAPI.IsSpellHelpful;
 	local UnitClass, UnitHealth, UnitHealthMax = UnitClass, UnitHealth, UnitHealthMax;
 	local GetClassColorObj, PlaySound, SOUNDKIT = GetClassColorObj, PlaySound, SOUNDKIT;
 	local WARNING_LOW_HEALTH = ChatTypeInfo.YELL;
@@ -460,7 +515,7 @@ do 	local IsHarmfulSpell, IsHelpfulSpell = IsHarmfulSpell, IsHelpfulSpell;
 
 	function Cursor:IsApplicableSpell(spell)
 		return self:GetAttribute('relation')
-			== (IsHarmfulSpell(spell) and 'harm' or IsHelpfulSpell(spell) and 'help');
+			== (IsSpellHarmful(spell) and 'harm' or IsSpellHelpful(spell) and 'help');
 	end
 
 	function Cursor:SetSpellTexture(texture)
@@ -537,24 +592,31 @@ db:RegisterCallbacks(Cursor.UpdatePointer, Cursor,
 ---------------------------------------------------------------
 -- UI Caching
 ---------------------------------------------------------------
-local ScanUI;
+local ScanUI, ScanFrames;
 do	local EnumerateFrames, GetAttribute, IsProtected = EnumerateFrames, Cursor.GetAttribute, Cursor.IsProtected;
+	ScanFrames = function(self, node, iterator, includeAll)
+		while node do
+			if IsProtected(node) then
+				if includeAll then
+					self:CacheNode(node)
+				else
+					local unit, action = GetAttribute(node, 'unit'), GetAttribute(node, 'action')
+					if unit and not action then
+						self:CacheNode(node)
+					elseif action and tonumber(action) then
+						self:CacheNode(node)
+					end
+				end
+			end
+			node = iterator(node)
+		end
+	end;
+
 	ScanUI = CPAPI.Debounce(function(self)
 		if InCombatLockdown() then
 			return CPAPI.Log('Raid cursor scan failed due to combat lockdown. Waiting for combat to end...')
 		end
-		local node = EnumerateFrames()
-		while node do
-			if IsProtected(node) then
-				local unit, action = GetAttribute(node, 'unit'), GetAttribute(node, 'action')
-				if unit and not action then
-					self:CacheNode(node)
-				elseif action and tonumber(action) then
-					self:CacheNode(node)
-				end
-			end
-			node = EnumerateFrames(node)
-		end
+		ScanFrames(self, EnumerateFrames(), EnumerateFrames, false)
 	end, Cursor)
 end
 
@@ -572,6 +634,11 @@ function Cursor:CacheNode(node)
 		self:AddFrame(node)
 		return true;
 	end
+end
+
+function Cursor:CacheActionBar(bar)
+	local iterator = GenerateClosure(next, tInvert { bar:GetChildren() })
+	ScanFrames(self, iterator(), iterator, true)
 end
 
 do 	local FILTER_SIGNATURE, DEFAULT_NODE_PREDICATE = 'local unit = unit or ...; return %s;', 'true';
@@ -663,7 +730,8 @@ do 	local UnitChannelInfo, UnitCastingInfo = UnitChannelInfo, UnitCastingInfo;
 	end
 
 	function Cursor:UNIT_SPELLCAST_SUCCEEDED(_, _, spellID)
-		local name, _, texture = GetSpellInfo(spellID)
+		local info = CPAPI.GetSpellInfo(spellID)
+		local name, texture = info.name, info.iconID;
 		if name and texture then
 			if self:IsApplicableSpell(name) then
 				self:SetSpellTexture(texture)

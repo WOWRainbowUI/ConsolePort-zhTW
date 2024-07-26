@@ -186,6 +186,17 @@ function ConsolePort:ProcessInterfaceClickEvent(...)
 end
 
 ---------------------------------------------------------------
+-- @brief Set an obstructor for the interface cursor
+-- @param obstructor: obstructor frame (frame)
+-- @param state: obstructor state (bool)
+function ConsolePort:SetCursorObstructor(obstructor, state)
+	if db.Stack then
+		if not state then state = nil end;
+		db.Stack:SetCursorObstructor(obstructor, state)
+	end
+end
+
+---------------------------------------------------------------
 -- Directly mapped functions for manipulating the cursor
 ---------------------------------------------------------------
 do local map = function(func)
@@ -200,6 +211,8 @@ do local map = function(func)
 	-- @brief Set the cursor to a node
 	-- @param node: node to set (frame)
 	-- @param assertNotMouse: assert that node is not mouseovered (bool)
+	-- @param forceEnable: force enable cursor (bool)
+	-- @return success: true if cursor was set to the node (bool)
 	ConsolePort.SetCursorNode         = map 'SetCurrentNode'
 	-----------------------------------------------------------
 	-- @brief Check if cursor is currently on a node

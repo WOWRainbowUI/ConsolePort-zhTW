@@ -83,7 +83,7 @@ function Cursor:OnClick()
 end
 
 function Cursor:OnStackChanged(hasFrames)
-	if db('UIshowOnDemand') then
+	if db('UIshowOnDemand') or not IsGamePadFreelookEnabled() then
 		return
 	end
 	return self:SetEnabled(hasFrames)
@@ -178,12 +178,16 @@ function Cursor:RefreshToFrame(frame)
 	end
 end
 
-function Cursor:SetCurrentNode(node, assertNotMouse)
-	if not db('UIenableCursor') or (db('UIshowOnDemand') and not self:IsShown()) then
-		return
-	end
+function Cursor:SetCurrentNode(node, assertNotMouse, forceEnable)
+	local isGamepadActive = IsGamePadFreelookEnabled()
+
+	-- Prerequisites
+	if not db('UIenableCursor') then return end;
+	if db('UIshowOnDemand') and not self:IsShown() then return end;
+	if not isGamepadActive and not forceEnable then return end;
+
 	local object = node and Node.ScanLocal(node)[1]
-	if object and (not assertNotMouse or IsGamePadFreelookEnabled()) then
+	if object and (not assertNotMouse or isGamepadActive or forceEnable) then
 		self:SetOnEnableCallback(function(self, object)
 			self:SetBasicControls()
 			self:SetFlashNextNode()
@@ -265,7 +269,7 @@ do  -- Create input proxy for basic controls
 			self.DpadControls = {
 				PADDUP    = {GenerateClosure(InputProxy, 'PADDUP'),    DpadInit, DpadClear, DpadRepeater};
 				PADDDOWN  = {GenerateClosure(InputProxy, 'PADDDOWN'),  DpadInit, DpadClear, DpadRepeater};
-				PADDLEFT  = {GenerateClosure(InputProxy, 'PADDLEFT'),  DpadInit, DpadClear, DpadRepeater}; 
+				PADDLEFT  = {GenerateClosure(InputProxy, 'PADDLEFT'),  DpadInit, DpadClear, DpadRepeater};
 				PADDRIGHT = {GenerateClosure(InputProxy, 'PADDRIGHT'), DpadInit, DpadClear, DpadRepeater};
 			};
 		end
@@ -274,18 +278,23 @@ do  -- Create input proxy for basic controls
 		end
 		for key in pairs(self.BasicControls) do
 			if not self.DpadControls[key] then
-				self.BasicControls[key] = nil
+				self.BasicControls[key] = nil;
 			end
 		end
-		local dynamicKeys = {
-			db('Settings/UICursorSpecial'),
-		}
-		for _, key in ipairs(dynamicKeys) do
+		self.DynamicControls = {
+			db('Settings/UICursorSpecial');
+			db('Settings/UICursorCancel');
+		};
+		for _, key in ipairs(self.DynamicControls) do
 			if not self.BasicControls[key] then
 				self.BasicControls[key] = {GenerateClosure(InputProxy, key)}
 			end
 		end
-		return self.BasicControls
+		return self.BasicControls;
+	end
+
+	function Cursor:IsDynamicControl(key)
+		return self.DynamicControls and tContains(self.DynamicControls, key)
 	end
 
 	function Cursor:SetBasicControls()
@@ -296,11 +305,12 @@ do  -- Create input proxy for basic controls
 	end
 
 	-- Callbacks to reset controls when inputters change
-	do local function ResetControls(self) self.BasicControls = nil; end
+	do local function ResetControls(self) self.BasicControls, self.DynamicControls = nil; end
 		db:RegisterCallbacks(ResetControls, Cursor,
 			'Settings/UICursorSpecial',
+			'Settings/UICursorCancel',
 			'Settings/UICursorLeftClick',
-			'Settings/UICursorRightClick'	
+			'Settings/UICursorRightClick'
 		);
 	end
 
@@ -341,11 +351,25 @@ function Cursor:ReverseScanUI(node, key, target, changed)
 		Node.ScanLocal(parent)
 		target, changed = Node.NavigateToBestCandidateV2(self.Cur, key)
 		if changed then
-			return target, changed
+			return target, changed;
 		end
 		return self:ReverseScanUI(parent, key)
 	end
-	return self.Cur, false
+	return self.Cur, false;
+end
+
+function Cursor:ReverseScanStack(node, key, target, changed)
+	if node then
+		local parent = node:GetParent()
+		Node.ScanLocal(parent)
+		target, changed = Node.NavigateToBestCandidateV2(self.Cur, key)
+		if changed then
+			return target, changed;
+		end
+		self:ScanUI()
+		return Node.NavigateToBestCandidateV2(self.Cur, key)
+	end
+	return self.Cur, false;
 end
 
 function Cursor:Navigate(key)
@@ -353,8 +377,7 @@ function Cursor:Navigate(key)
 	if db('UIaccessUnlimited') then
 		target, changed = self:SetCurrent(self:ReverseScanUI(self:GetCurrentNode(), key))
 	else
-		self:ScanUI()
-		target, changed = self:SetCurrent(Node.NavigateToBestCandidateV2(self:GetCurrent(), key))
+		target, changed = self:SetCurrent(self:ReverseScanStack(self:GetCurrentNode(), key))
 	end
 	if not changed then
 		target, changed = self:SetCurrent(Node.NavigateToClosestCandidate(target, key))
@@ -379,7 +402,7 @@ function Cursor:Input(key, caller, isDown)
 		if not self:AttemptDragStart() then
 			target, changed = self:Navigate(key)
 		end
-	elseif ( key == db('Settings/UICursorSpecial') ) then
+	elseif self:IsDynamicControl(key) then
 		return Hooks:ProcessInterfaceCursorEvent(key, isDown, self:GetCurrentNode())
 	end
 	if ( target ) then
@@ -600,6 +623,7 @@ do	local f, path = format, 'Gamepad/Active/Icons/%s-64';
 		-- object cases
 		EditBox  = opt;
 		Slider   = nop;
+		Frame    = nop;
 	}, function() return left end)
 	-- remove texture evaluator so cursor refreshes on next movement
 	local function ResetTexture(self)
@@ -618,22 +642,23 @@ function Cursor:SetTexture(texture)
 	local object = texture or self:GetCurrentObjectType()
 	local evaluator = self.Textures[object]
 	if ( evaluator ~= self.textureEvaluator ) then
+		local node = self:GetCurrentNode()
 		if self.useAtlasIcons then
-			local atlas = evaluator()
+			local atlas = evaluator(node)
 			if atlas then
 				self.Display.Button:SetAtlas(atlas)
 			else
 				self.Display.Button:SetTexture(nil)
 			end
 		else
-			self.Display.Button:SetTexture(evaluator())
+			self.Display.Button:SetTexture(evaluator(node))
 		end
 	end
 	self.textureEvaluator = evaluator;
 end
 
 function Cursor:ToggleScrollIndicator(enabled)
-	self.Display.Scroller:SetPoint('LEFT', self.Display.Button, 'RIGHT', self.Display.Button:GetTexture() and 2 or -24, 0)
+	self.Display.Scroller:SetPoint('LEFT', self.Display.Button, 'RIGHT', self.Display.Button:GetTexture() and 2 or -16, 0)
 	if self.isScrollingActive == enabled then return end;
 	local evaluator = self.Textures.Modifier;
 	local texture   = evaluator and evaluator() or nil;
@@ -701,6 +726,7 @@ function Cursor:Move()
 end
 
 function Cursor:Chime()
+	if not self.enableSound then return end;
 	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON, 'Master', false, false)
 end
 
@@ -709,13 +735,15 @@ function Cursor:UpdatePointer()
 	self.Display:SetOffset(db('UIpointerOffset'))
 	self.Display:SetRotationEnabled(db('UIpointerAnimation'))
 	self.Display.animationSpeed = db('UItravelTime');
+	self.enableSound = db('UIpointerSound')
 end
 
 db:RegisterCallbacks(Cursor.UpdatePointer, Cursor,
 	'Settings/UItravelTime',
 	'Settings/UIpointerSize',
 	'Settings/UIpointerOffset',
-	'Settings/UIpointerAnimation'
+	'Settings/UIpointerAnimation',
+	'Settings/UIpointerSound'
 );
 
 -- Highlight mime
@@ -726,7 +754,7 @@ end
 
 
 function Cursor:SetHighlight(node)
-	if node and (not node.IsEnabled or node:IsEnabled()) then
+	if node and (not node.IsEnabled or node:IsEnabled()) and not node:GetAttribute(env.Attributes.IgnoreMime) then
 		self.Mime:SetNode(node)
 	else
 		self:ClearHighlight()
@@ -817,7 +845,7 @@ function Cursor.ScaleInOut:ConfigureScale()
 	local cur, old = Cursor:GetCurrent(), Cursor:GetOld()
 	if (cur == old) and not self.Flash then
 		self.Shrink:SetDuration(0)
-		self.Enlarge:SetDuration(0)	
+		self.Enlarge:SetDuration(0)
 	elseif cur then
 		local scaleAmount, shrinkDuration = 1.15, 0.2
 		if self.Flash then
@@ -850,8 +878,8 @@ end
 do  -- Set up animation scripts
 	local animationGroups = {Cursor.ScaleInOut, Cursor.Mime.Scale}
 
-	local function setupScripts(w) 
-		for k, v in pairs(w) do 
+	local function setupScripts(w)
+		for k, v in pairs(w) do
 			if w:HasScript(k) then w:SetScript(k, v) end
 		end
 	end
