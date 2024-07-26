@@ -26,6 +26,7 @@ Control.KeyIDToBindingMap = setmetatable({
     CENTER   = 'PADSYSTEM',
 }, {
 	__index = function(self, key)
+		if (key == nil) then return end;
 		if (key == 'M1') then
 			local var = GetCVar('GamePadEmulateShift')
 			return (var and var ~= 'none') and var;
@@ -159,7 +160,7 @@ function Control:RemoveHint(key)
 end
 
 function Control:GetHintForKey(key)
-	local hint = self.HintBar:GetActiveHintForKey()
+	local hint = self.HintBar:GetActiveHintForKey(key)
 	if hint then
 		return hint, hint:GetText()
 	end
@@ -180,3 +181,9 @@ function Control:SetHintEnabled(key)
 		self:RegisterHintForFrame(self.focus, key, hint:GetText(), true)
 	end
 end
+
+
+Control.Background = CreateFrame('Frame', nil, Control.HintBar, 'CPToolbarSixSliceFrame')
+Control.Background:SetAlpha(0.5)
+Control.Background:SetPoint('TOPLEFT', Control.HintBar, 'TOPLEFT', -32, 0)
+Control.Background:SetPoint('BOTTOMRIGHT', Control.HintBar, 'BOTTOMRIGHT', 32, 0)

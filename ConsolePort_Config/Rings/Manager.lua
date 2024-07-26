@@ -1,6 +1,6 @@
 local _, env = ...;
 local db, L, Widgets = env.db, env.L, env.Widgets;
-local LoadoutTypeMetaMap = LibStub('CPActionButton').TypeMetaMap;
+local LoadoutTypeMetaMap = LibStub('ConsolePortActionButton').TypeMetaMap;
 
 ---------------------------------------------------------------
 local DEFAULT_RING_ID = CPAPI.DefaultRingSetID;
@@ -8,8 +8,8 @@ local DEFAULT_RING_BINDING = 'LeftButton';
 
 local BUTTON_WITH_ICON_TEXT = '     %s';
 
-local SELECTED_RING_TEXT = [[這是目前選擇的環形選單。
-按下綁定的按鈕時，所有選擇的能力都會出現在畫面上並形成一個環。
+local SELECTED_RING_TEXT = L[[這是目前選擇的環形選單。
+按住綁定的按鈕不放時，所有選擇的能力都會出現在畫面上並形成一個環。
 
 轉動搖桿方向，朝要使用的能力傾斜，然後放開綁定的按鈕來用它。]]
 local ADD_NEW_RING_TEXT = [[|cFFFFFF00建立新的環|r
@@ -38,7 +38,6 @@ local RING_EMPTY_DESC = [[這個環還沒有加入任何能力。]]
 
 
 local EXTRA_ACTION_ID = CPAPI.ExtraActionButtonID;
-local GET_SPELLID_IDX = 7;
 local FIXED_OFFSET = 8;
 ---------------------------------------------------------------
 -- Helpers
@@ -208,7 +207,7 @@ function RingSelectMixin:Construct()
 	self.tooltipAnchor = 'ANCHOR_BOTTOM';
 	self.Popout:ClearAllPoints()
 	self.Popout:SetPoint('TOPRIGHT', -2, 0)
-	self.controller:SetCallback(function(value)
+	self:SetCallback(function(value)
 		self:OnValueChanged(value)
 		self:Update()
 		db:TriggerEvent('OnRingSelectionChanged', value)
@@ -216,6 +215,7 @@ function RingSelectMixin:Construct()
 	db:RegisterCallback('OnRingAdded', self.OnRingAdded, self)
 	db:RegisterCallback('OnRingRemoved', self.OnRingRemoved, self)
 	self:SetScript('OnClick', CPIndexButtonMixin.OnIndexButtonClick)
+	self.disableTooltipHints = true;
 end
 
 ---------------------------------------------------------------
@@ -359,10 +359,15 @@ local CollectionMixin = CreateFromMixins(ActionMapper.CollectionMixin, {
 	rowSize = 8;
 	clickActionCallback = function(self)
 		local pickup = self.pickup;
+		local append = self.append;
+		local ringID = GetSelectedRingID()
 		if pickup then
 			pickup(self:GetValue())
-			db.Utility:CheckCursorInfo(GetSelectedRingID(), true)
+			db.Utility:CheckCursorInfo(ringID, true)
 			ClearCursor()
+		elseif append then
+			db.Utility:AddUniqueAction(ringID, nil, append(self:GetValue()))
+			db:TriggerEvent('OnRingContentChanged', ringID)
 		end
 		CPIndexButtonMixin.Uncheck(self)
 	end;
@@ -425,7 +430,7 @@ local LoadoutButton = CreateFromMixins(CPSmoothButtonMixin, {
 			end)
 		end;
 		spell = function(self, id)
-			local spellID = (select(GET_SPELLID_IDX, GetSpellInfo(id)))
+			local spellID = CPAPI.GetSpellInfo(id).spellID;
 			if spellID then
 				Spell:CreateFromSpellID(spellID):ContinueOnSpellLoad(function()
 					self:UpdateProps()
@@ -438,6 +443,7 @@ local LoadoutButton = CreateFromMixins(CPSmoothButtonMixin, {
 
 function LoadoutButton:OnLoad()
 	self.ignoreUtilityRing = true;
+	self.MasqueSkinned = true;
 	self:SetWidth(self:GetParent():GetWidth() - 16)
 	self.Label:SetWidth(self:GetWidth() - 100)
 	self:SetScript('OnShow', self.OnShow)
@@ -486,9 +492,13 @@ end
 
 function LoadoutButton:GetDisplayText()
 	local text = self:GetActionText()
-	if not text then
+	if ( not text or text == '' ) then
 		if self:IsExtraActionButton() then
 			text = GetExtraActionButtonName()
+		elseif ( self._state_type == 'item' ) then
+			text = (CPAPI.GetItemInfo(self._state_action).itemName)
+		elseif ( self._state_type == 'spell' ) then
+			text = (CPAPI.GetSpellInfo(self._state_action).name)
 		end
 	end
 	return text;

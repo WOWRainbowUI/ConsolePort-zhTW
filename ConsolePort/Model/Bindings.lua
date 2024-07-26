@@ -18,6 +18,7 @@ do local function click(id, btn) return ('CLICK %s%s:%s'):format(_, id, btn or '
 		RaidCursorToggle  = click 'RaidCursorToggle';
 		UICursorToggle    = click 'Cursor';
 		UtilityRing       = click 'UtilityToggle';
+		MenuRing          = click 'MenuTrigger';
 		--FocusButton     = click 'FocusButton';
 	};
 end
@@ -98,16 +99,19 @@ do local function hold(binding) return ('%s (按住)'):format(binding) end;
 		};
 		{	binding = Bindings.Custom.PetRing;
 			name    = '寵物環';
+			unit    = 'pet';
 			desc    = [[
 				用來控制當前寵物的環形選單。
 			]];
-			texture = function(self)
-				if UnitExists('pet') then
-					SetPortraitTexture(self, 'pet')
-				else
-					self:SetTexture([[Interface\ICONS\INV_Box_PetCarrier_01]])
-				end
-			end;
+			texture = [[Interface\ICONS\INV_Box_PetCarrier_01]];
+		};
+		{	binding = Bindings.Custom.MenuRing;
+			name    = '選單環';
+			desc    = [[
+				將常用面板和頻繁操作集中在一個地方，方便快速使用的環形選單。
+
+				這個環形選單也可以從遊戲選單中使用，無需單獨綁定，只需切換頁面即可。
+			]];
 		};
 		---------------------------------------------------------------
 		-- Pager
@@ -290,6 +294,22 @@ for i, set in ipairs(Bindings.Primary) do
 	set.name = set.name or GetBindingName(set.binding)
 end
 
+Bindings.Dynamic = {
+	{	binding = 'TARGETSELF';
+		unit    = 'player';
+	};
+};
+for i=1, (MAX_PARTY_MEMBERS or 4) do tinsert(Bindings.Dynamic,
+	{	binding = 'TARGETPARTYMEMBER'..i;
+		unit    = 'party'..i;
+		texture = client('Achievement_PVP_A_0'..i);
+	}
+) end;
+
+for i, set in ipairs(Bindings.Dynamic) do
+	set.name = set.name or GetBindingName(set.binding)
+end
+
 ---------------------------------------------------------------
 -- Get description for custom bindings
 ---------------------------------------------------------------
@@ -301,7 +321,7 @@ do -- Handle custom rings
 
 		要從環形選單中移除項目，選定該項目後，依照滑鼠提示說明來操作。
 	]]
-	local CUSTOM_RING_ICON = [[Interface\AddOns\ConsolePort_Bar\Textures\Icons\Ring]]
+	local CUSTOM_RING_ICON = [[Interface\AddOns\ConsolePort_Bar\Assets\Textures\Icons\Ring]]
 
 	local function FindBindingInCollection(binding, collection)
 		for i, set in ipairs(collection) do
@@ -314,17 +334,31 @@ do -- Handle custom rings
 	function Bindings:GetCustomBindingInfo(binding)
 		return FindBindingInCollection(binding, self.Special)
 			or FindBindingInCollection(binding, self.Primary)
+			or FindBindingInCollection(binding, self.Dynamic)
 	end
 
-	function Bindings:GetDescriptionForBinding(binding, useTooltipFormat)
+	function Bindings:GetDescriptionForBinding(binding, useTooltipFormat, tooltipLineLength)
 		local set = self:GetCustomBindingInfo(binding)
 
 		if set then
-			local desc = set.desc;
-			if desc and useTooltipFormat then
-				desc = CPAPI.FormatLongText(desc)
+			local desc, image, texture, unit = set.desc, set.image, set.texture, set.unit;
+			if ( desc and useTooltipFormat ) then
+				desc = CPAPI.FormatLongText(desc, tooltipLineLength)
 			end
-			return desc, set.image, set.name, set.texture;
+			if ( image and useTooltipFormat ) then
+				image = CPAPI.CreateSimpleTextureMarkup(image.file, image.width, image.height)
+			end
+			if ( unit and type(texture) ~= 'function' ) then
+				local default = texture;
+				texture = function(self)
+					if UnitExists(unit) then
+						return SetPortraitTexture(self, unit)
+					end
+					self:SetTexture(default)
+				end
+				set.texture = texture;
+			end
+			return desc, image, set.name, texture;
 		end
 
 		local customRingName = db.Utility:ConvertBindingToDisplayName(binding)
@@ -337,17 +371,22 @@ end
 ---------------------------------------------------------------
 -- Binding icon management
 ---------------------------------------------------------------
-do local function custom(id) return ([[Interface\AddOns\ConsolePort_Bar\Textures\Icons\%s]]):format(id) end;
+do local function custom(id) return ([[Interface\AddOns\ConsolePort_Bar\Assets\Textures\Icons\%s]]):format(id) end;
 
 	local CustomIcons = {
-		Bags   = custom 'Bags';
-		Group  = custom 'Group';
-		Jump   = custom 'Jump';
-		Map    = custom 'Map';
-		Menu   = custom 'Menu';
-		Ring   = custom 'Ring';
-		Run    = custom 'Run';
-		Target = custom 'Target';
+		Bags      = custom 'Bags.png';
+		Group     = custom 'Group.png';
+		Jump      = custom 'Jump.png';
+		Map       = custom 'Map.png';
+		Menu      = custom 'Menu.png';
+		Ring      = custom 'Ring.png';
+		Run       = custom 'Run.png';
+		Target    = custom 'Target';
+		TNEnemy   = custom 'Target_Narrow_Enemy.png';
+		TNFriend  = custom 'Target_Narrow_Friend.png';
+		TWEnemy   = custom 'Target_Wide_Enemy.png';
+		TWFriend  = custom 'Target_Wide_Friend.png';
+		TWNeutral = custom 'Target_Wide_Neutral.png';
 	}; Bindings.CustomIcons = CustomIcons;
 
 	Bindings.DefaultIcons = {
@@ -358,17 +397,17 @@ do local function custom(id) return ([[Interface\AddOns\ConsolePort_Bar\Textures
 		TOGGLEGAMEMENU                     = CustomIcons.Menu;
 		TOGGLEWORLDMAP                     = CustomIcons.Map;
 		---------------------------------------------------------------
-		INTERACTTARGET                     = CustomIcons.Target;
+		INTERACTTARGET                     = CustomIcons.TWNeutral;
 		---------------------------------------------------------------
-		TARGETNEARESTENEMY                 = CustomIcons.Target;
-		TARGETPREVIOUSENEMY                = CustomIcons.Target;
-		TARGETSCANENEMY                    = CustomIcons.Target;
-		TARGETNEARESTFRIEND                = CustomIcons.Target;
-		TARGETPREVIOUSFRIEND               = CustomIcons.Target;
-		TARGETNEARESTENEMYPLAYER           = CustomIcons.Target;
-		TARGETPREVIOUSENEMYPLAYER          = CustomIcons.Target;
-		TARGETNEARESTFRIENDPLAYER          = CustomIcons.Target;
-		TARGETPREVIOUSFRIENDPLAYER         = CustomIcons.Target;
+		TARGETNEARESTENEMY                 = CustomIcons.TWEnemy;
+		TARGETPREVIOUSENEMY                = CustomIcons.TWEnemy;
+		TARGETSCANENEMY                    = CustomIcons.TNEnemy;
+		TARGETNEARESTFRIEND                = CustomIcons.TWFriend;
+		TARGETPREVIOUSFRIEND               = CustomIcons.TWFriend;
+		TARGETNEARESTENEMYPLAYER           = CustomIcons.TNEnemy;
+		TARGETPREVIOUSENEMYPLAYER          = CustomIcons.TNEnemy;
+		TARGETNEARESTFRIENDPLAYER          = CustomIcons.TNFriend;
+		TARGETPREVIOUSFRIENDPLAYER         = CustomIcons.TNFriend;
 		---------------------------------------------------------------
 		TARGETPARTYMEMBER1                 = CPAPI.IsRetailVersion and client 'Achievement_PVP_A_01';
 		TARGETPARTYMEMBER2                 = CPAPI.IsRetailVersion and client 'Achievement_PVP_A_02';
@@ -387,6 +426,7 @@ do local function custom(id) return ([[Interface\AddOns\ConsolePort_Bar\Textures
 		[Bindings.Custom.RaidCursorFocus]  = CustomIcons.Group;
 		[Bindings.Custom.RaidCursorTarget] = CustomIcons.Group;
 		[Bindings.Custom.UtilityRing]      = CustomIcons.Ring;
+		[Bindings.Custom.MenuRing]         = CustomIcons.Menu;
 		--[Bindings.Custom.FocusButton]    = client 'VAS_RaceChange';
 		---------------------------------------------------------------
 	};

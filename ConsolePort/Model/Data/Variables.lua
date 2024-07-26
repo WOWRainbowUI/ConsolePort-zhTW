@@ -11,7 +11,7 @@ local unpack, _, db = unpack, ...; _ = CPAPI.Define; db.Data();
 ------------------------------------------------------------------------------------------------------------
 -- Default cvar data (global)
 ------------------------------------------------------------------------------------------------------------
-db:Register('Variables', {
+db:Register('Variables', CPAPI.Callable({
 	showAdvancedSettings = {Bool(false);
 		name = '所有設定';
 		desc = '顯示所有可供調整的設定。';
@@ -33,16 +33,19 @@ db:Register('Variables', {
 	crosshairSizeX = _{Number(24, 1, true);
 		name = '寬度';
 		desc = '十字線的寬度，以像素比例為單位。';
+		deps = { crosshairEnable = true };
 		advd = true;
 	};
 	crosshairSizeY = _{Number(24, 1, true);
 		name = '高度';
 		desc = '十字線的高度，以像素比例為單位。';
+		deps = { crosshairEnable = true };
 		advd = true;
 	};
 	crosshairCenter = _{Number(0.2, 0.05, true);
 		name = '中心空隙';
 		desc = '相當於十字線的整體大小。';
+		deps = { crosshairEnable = true };
 		advd = true;
 	};
 	crosshairThickness = _{Number(2, 0.025, true);
@@ -54,6 +57,7 @@ db:Register('Variables', {
 	crosshairColor = _{Color('ff00fcff');
 		name = '顏色';
 		desc = '十字線的顏色。';
+		deps = { crosshairEnable = true };
 	};
 	--------------------------------------------------------------------------------------------------------
 	_'Movement';
@@ -166,16 +170,6 @@ db:Register('Variables', {
 		name = '自動隱藏環形選單';
 		desc = '搖桿輸入過後幾秒要取消環形選單。';
 	};
-	radialScale = _{Number(1, 0.025, true);
-		name = '選單縮放大小';
-		desc = '所有環形選單的縮放大小，相對於整體介面縮放。';
-		advd = true;
-	};
-	radialPreferredSize = _{Number(500, 25, true);
-		name = '環形選單大小';
-		desc = '環形選單的大小，以像素為單位。';
-		advd = true;
-	};
 	radialActionDeadzone = _{Range(0.5, 0.05, 0, 1);
 		name = '盲區';
 		desc = '簡易環形選單的盲區。';
@@ -194,6 +188,41 @@ db:Register('Variables', {
 	radialRemoveButton = _{Button('PADRSHOULDER');
 		name = '移除按鈕';
 		desc = '從可編輯的環形選單中移除所選項目的按鈕。';
+	};
+	radialScale = _{Number(1, 0.025, true);
+		name = 'Ring Scale';
+		desc = 'Scale of all radial menus, relative to UI scale.';
+		advd = true;
+	};
+	radialPreferredSize = _{Number(400, 25, true);
+		name = 'Ring Size';
+		desc = 'Preferred size of radial menus, in pixels.';
+		advd = true;
+	};
+	radialNormalColor = _{Color(CPAPI.GetMutedClassColor(0.6, true));
+		name = 'Normal Color';
+		desc = 'Normal background color of pie slices.';
+		advd = true;
+	};
+	radialActiveColor = _{Color(GREEN_FONT_COLOR);
+		name = 'Active Color';
+		desc = 'Color of the active slice.';
+		advd = true;
+	};
+	radialHiliteColor = _{Color(NORMAL_FONT_COLOR);
+		name = 'Highlight Color';
+		desc = 'Color of a partially selected slice.';
+		advd = true;
+	};
+	radialStickyColor = _{Color(ORANGE_FONT_COLOR);
+		name = 'Sticky Color';
+		desc = 'Color of the sticky selection slice.';
+		advd = true;
+	};
+	radialAccentColor = _{Color(CPAPI.GetClassColorObject());
+		name = 'Accent Color';
+		desc = 'Color accent of radial menu items.';
+		advd = true;
 	};
 	--------------------------------------------------------------------------------------------------------
 	_'環形鍵盤';
@@ -222,21 +251,25 @@ db:Register('Variables', {
 	raidCursorUp = _{Button('PADDUP', true);
 		name = '往上移動';
 		desc = '將游標往上移動的按鈕。';
+		deps = { raidCursorModifier = '<none>' };
 		advd = true;
 	};
 	raidCursorDown = _{Button('PADDDOWN', true);
 		name = '往下移動';
 		desc = '將游標往下移動的按鈕。';
+		deps = { raidCursorModifier = '<none>' };
 		advd = true;
 	};
 	raidCursorLeft = _{Button('PADDLEFT', true);
 		name = '往左移動';
 		desc = '將游標往左移動的按鈕。';
+		deps = { raidCursorModifier = '<none>' };
 		advd = true;
 	};
 	raidCursorRight = _{Button('PADDRIGHT', true);
 		name = '往右移動';
 		desc = '將游標往右移動的按鈕。';
+		deps = { raidCursorModifier = '<none>' };
 		advd = true;
 	};
 	raidCursorFilter = _{String(nil);
@@ -341,21 +374,25 @@ db:Register('Variables', {
 		name = '組合按鈕 1';
 		desc = '組合快速鍵 1 使用的按鈕。';
 		note = '需要選擇 '..BLUE'按鈕組合'..' > '..BLUE'L[Custom]'..' 以便單獨控制每個按鈕。';
+		deps = { unitHotkeySet = 'Custom' };
 	};
 	unitHotkeyButton2 = _{Button('PAD2');
 		name = '組合按鈕 2';
 		desc = '組合快速鍵 2 使用的按鈕。';
 		note = '需要選擇 '..BLUE'按鈕組合'..' > '..BLUE'L[Custom]'..' 以便單獨控制每個按鈕。';
+		deps = { unitHotkeySet = 'Custom' };
 	};
 	unitHotkeyButton3 = _{Button('PAD3');
 		name = '組合按鈕 3';
 		desc = '組合快速鍵 3 使用的按鈕。';
 		note = '需要選擇 '..BLUE'按鈕組合'..' > '..BLUE'L[Custom]'..' 以便單獨控制每個按鈕。';
+		deps = { unitHotkeySet = 'Custom' };
 	};
 	unitHotkeyButton4 = _{Button('PAD4');
 		name = '組合按鈕 4';
 		desc = '組合快速鍵 4 使用的按鈕。';
 		note = '需要選擇 '..BLUE'按鈕組合'..' > '..BLUE'L[Custom]'..' 以便單獨控制每個按鈕。';
+		deps = { unitHotkeySet = 'Custom' };
 	};
 	--------------------------------------------------------------------------------------------------------
 	_( ACCESSIBILITY_LABEL ); -- Accessibility
@@ -410,13 +447,7 @@ db:Register('Variables', {
 		desc = '沒有姿勢形態的角色會顯示額外快捷列的設定。';
 		advd = true;
 	};
-	bindingDisableQuickAssign = _{Bool(false);
-		name = '停用快速指派';
-		desc = '使用搖桿快捷列時，停用未設定按鈕組合的快速指派。';
-		note = '需要重新載入介面。';
-		advd = true;
-	};
-	bindingShowSpellMenuGrid = _{Bool(true);
+	bindingShowSpellMenuGrid = _{Bool(false);
 		name = '選取法術時顯示快捷列格子';
 		desc = '用游標選取法術時顯示快捷列的格子。';
 	};
@@ -466,16 +497,17 @@ db:Register('Variables', {
 	actionPageCondition = _{String(nil);
 		name = '切換快捷列條件';
 		desc = '用巨集判斷條件來切換快捷列。';
-		advd = true;
+		hide = true;
 	};
 	actionPageResponse = _{String(nil);
 		name = '切換快捷列回應';
 		desc = '對自訂處理條件做出的回應。';
-		advd = true;
+		hide = true;
 	};
 	classFileOverride = _{String(nil);
 		name = '其他佈景主題';
 		desc = '用來取代職業佈景主題的介面風格。';
-		advd = true;
+		hide = true;
 	};
-})  --------------------------------------------------------------------------------------------------------
+},  --------------------------------------------------------------------------------------------------------
+function(self, key) return (rawget(self, key) or {})[1] end))

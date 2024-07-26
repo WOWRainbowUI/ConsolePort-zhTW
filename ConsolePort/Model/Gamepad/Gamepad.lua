@@ -2,8 +2,7 @@ local _, db = ...;
 local C_GamePad, GamepadMixin, GamepadAPI = C_GamePad, {}, CPAPI.CreateEventHandler({'Frame', '$parentGamePadHandler', ConsolePort}, {
 	'UPDATE_BINDINGS';
 	'GAME_PAD_CONFIGS_CHANGED';
-	'GAME_PAD_CONNECTED';
-	'GAME_PAD_DISCONNECTED';
+	'PLAYER_ENTERING_WORLD';
 	(CPAPI.IsRetailVersion or CPAPI.IsClassicVersion) and 'GAME_PAD_POWER_CHANGED';
 }, {
 	Modsims = {'ALT', 'CTRL', 'SHIFT'};
@@ -22,6 +21,7 @@ local C_GamePad, GamepadMixin, GamepadAPI = C_GamePad, {}, CPAPI.CreateEventHand
 			Key     = {}; -- modifier -> button
 			Prefix  = {}; -- modifier string -> button
 			Active  = {}; -- all possible modifier combinations
+			Owner   = {}; -- button -> modifier string
 			Driver  = ''; -- state driver for all active modifiers
 		};
 		Atlas = {
@@ -41,8 +41,8 @@ db:Save('Gamepad/Devices', 'ConsolePortDevices')
 -- API
 ---------------------------------------------------------------
 function GamepadAPI:AddGamepad(data, mergeDefault)
-	local defaultData = db('table/copy')(self.Devices.Default)
-	local gamepadData = mergeDefault and db('table/merge')(defaultData, data) or data
+	local defaultData = db.table.copy(self.Devices.Default)
+	local gamepadData = mergeDefault and db.table.merge(defaultData, data) or data
 	self.Devices[data.Name] = CPAPI.Proxy(gamepadData, GamepadMixin):OnLoad()
 end
 
@@ -53,14 +53,14 @@ end
 
 function GamepadAPI:GetDevices()
 	local devices = {};
-	for device in db('table/spairs')(self.Devices) do
+	for device in db.table.spairs(self.Devices) do
 		devices[#devices + 1] = device;
 	end
 	return devices;
 end
 
 function GamepadAPI:EnumerateDevices()
-	return db('table/spairs')(GamepadAPI.Devices)
+	return db.table.spairs(GamepadAPI.Devices)
 end
 
 function GamepadAPI:SetActiveDevice(name)
@@ -80,14 +80,14 @@ function GamepadAPI:SetActiveIconsFromDevice(device)
 	local styler = CPAPI.Proxy({}, function(self, button)
 		return device:GetIconForButton(button, self[0])
 	end)
-	CPAPI.Proxy(db('Icons'), function(self, style)
+	CPAPI.Proxy(db('Icons'), function(_, style)
 		styler[0] = style;
 		return styler;
 	end)
 end
 
 function GamepadAPI:GetActiveDevice()
-	return self.Active
+	return self.Active;
 end
 
 function GamepadAPI:GetActiveDeviceName()
@@ -97,32 +97,6 @@ end
 ---------------------------------------------------------------
 -- Events
 ---------------------------------------------------------------
-function GamepadAPI:GAME_PAD_CONFIGS_CHANGED()
-	CPAPI.Log('已變更搖桿設定。')
-end
-
-function GamepadAPI:GAME_PAD_CONNECTED()
-	db:TriggerEvent('OnGamePadConnect')
-	CPAPI.Log('已連接搖桿。')
-end
-
-function GamepadAPI:GAME_PAD_DISCONNECTED()
-	CPAPI.Log('未連接搖桿。')
-end
-
-function GamepadAPI:GAME_PAD_POWER_CHANGED(level)
-	db:TriggerEvent('OnGamePadPowerChange', level)
-end
-
-function GamepadAPI:UPDATE_BINDINGS()
-	self.updateBindingDispatching = true;
-	if self.IsMapped then
-		RunNextFrame(GamepadAPI.OnNewBindings)
-	else
-		GamepadAPI.OnNewBindings()
-	end
-end
-
 function GamepadAPI:OnDataLoaded()
 	self:ReindexMappedState()
 	self:ReindexIconAtlas()
@@ -150,6 +124,44 @@ function GamepadAPI:OnDataLoaded()
 	end
 end
 
+function GamepadAPI:PLAYER_ENTERING_WORLD()
+	self.IsDispatchReady = true;
+	self:QueueOnNewBindings()
+end
+
+function GamepadAPI:GAME_PAD_CONFIGS_CHANGED()
+	CPAPI.Log('已變更搖桿設定。')
+end
+
+function GamepadAPI:GAME_PAD_POWER_CHANGED(level)
+	db:TriggerEvent('OnGamePadPowerChange', level)
+end
+
+function GamepadAPI:UPDATE_BINDINGS()
+	if self.IsMapped and self.IsDispatchReady then
+		self:QueueOnNewBindings()
+	else
+		self:OnNewBindings()
+	end
+end
+
+-- UPDATE_BINDINGS - handle two different scenarios:
+-- 1. just logged in, and bindings are dispatched immediately.
+-- 2. logged in for a while, and bindings are dispatched with debouncing.
+-- 
+-- Why?
+-- 
+-- 1. runs unnecessarily since UPDATE_BINDINGS fires somewhere
+-- around 5-10 times on login, but we need to configure action bars
+-- immediately in case we're in combat, and we can't tell which event is
+-- the one when gamepad bindings are ready to be dispatched without some
+-- table inspection gymnastics, looking for a non-empty binding.
+--
+-- 2. we use debouncing to consolidate unnecessary update cycles, with the
+-- added benefit of likely setting overrides _after_ a conflicting action
+-- bar addon has already set its bindings. Yes, some people do actually
+-- use multiple action bar addons at the same time. Isn't it crazy?
+
 ---------------------------------------------------------------
 -- Callbacks
 ---------------------------------------------------------------
@@ -169,24 +181,34 @@ for _, modifier in ipairs(GamepadAPI.Modsims) do
 	db:RegisterSafeCallback(('GamePadEmulate%s'):format(modifier:lower():gsub('^%l', strupper)),
 	function(self, value)
 		self:ReindexModifiers()
-		-- Wipe all active bindings for a modifier when it's set.
-		for mod in pairs(self.Index.Modifier.Active) do
-			SetBinding(mod..value, nil)
-		end
+		-- Wipe the incompatible binding for a modifier when it's set.
+		-- E.g. if you set ALT to PAD1, ALT-PAD1 will be removed.
+		SetBinding(modifier..value, nil)
 		SaveBindings(GetCurrentBindingSet())
 		db:TriggerEvent('OnModifierChanged', modifier, value)
 	end, GamepadAPI)
 end
 
-function GamepadAPI.OnNewBindings()
-	if GamepadAPI.updateBindingDispatching then
-		local newBindings = GamepadAPI:GetBindings(true)
-		db:TriggerEvent('OnNewBindings', newBindings)
-		db:TriggerEvent('OnUpdateOverrides', false, newBindings)
-		db:TriggerEvent('OnUpdateOverrides', true,  newBindings)
-		GamepadAPI.updateBindingDispatching = nil;
+db:RegisterSafeCallback('GamePadStickAxisButtons', function(self, value)
+	if not value then return end;
+	for buttonID in pairs(self.Index.Button.Binding) do
+		if not CPAPI.IsButtonValidForBinding(buttonID) then
+			for modifier in pairs(self.Index.Modifier.Active) do
+				SetBinding(modifier..buttonID, nil)
+			end
+		end
 	end
-end
+	SaveBindings(GetCurrentBindingSet())
+end, GamepadAPI)
+
+db:RegisterSafeCallback('OnNewBindings', function(self)
+	db:SetCVar('GamePadStickAxisButtons', db('bindingAllowSticks'))
+	if ( self:GetBindingKey('INTERACTTARGET') and not GetCVarBool('SoftTargetInteract') ) then
+		-- FIX: On Classic, the interact key is not enabled by default.
+		-- If it's bound and disabled, enable it. 1 = GamePad, see Console.lua.
+		db:SetCVar('SoftTargetInteract', 1)
+	end
+end, GamepadAPI)
 
 db:RegisterCallback('Settings/useAtlasIcons', function(self, value)
 	self.UseAtlasIcons = value;
@@ -248,7 +270,7 @@ end
 
 function GamepadAPI:ReindexModifiers()
 	local map = self.Index.Modifier;
-	wipe(map.Key); wipe(map.Prefix);
+	wipe(map.Key); wipe(map.Prefix); wipe(map.Owner);
 
 	for _, mod in ipairs(self.Modsims) do
 		local btn = GetCVar('GamePadEmulate'..mod)
@@ -256,6 +278,7 @@ function GamepadAPI:ReindexModifiers()
 			self.Index.Modifier.Key[mod] = btn -- BUG: uproots the mod order if uppercase
 			self.Index.Modifier.Key[mod:upper()] = btn
 			self.Index.Modifier.Prefix[mod..'-'] = btn
+			self.Index.Modifier.Owner[btn] = mod..'-';
 		end
 	end
 	map.Active, map.Driver = self:GetActiveModifiers()
@@ -365,6 +388,15 @@ function GamepadAPI:GetBindingKey(binding)
 	return unpack(tFilter({GetBindingKey(binding, true)}, IsBindingForGamePad, true))
 end
 
+function GamepadAPI:OnNewBindings()
+	local newBindings = self:GetBindings(true)
+	db:TriggerEvent('OnNewBindings', newBindings)
+	db:TriggerEvent('OnUpdateOverrides', false, newBindings)
+	db:TriggerEvent('OnUpdateOverrides', true,  newBindings)
+end
+
+GamepadAPI.QueueOnNewBindings = CPAPI.Debounce(GamepadAPI.OnNewBindings, GamepadAPI)
+
 ---------------------------------------------------------------
 -- Data: icons
 ---------------------------------------------------------------
@@ -379,7 +411,7 @@ function GamepadAPI:ReindexIconAtlas()
 	end
 
 	-- Do indexing of the different styles
-	for style, sizes in pairs(self.Index.Atlas) do --SHP, 
+	for style, sizes in pairs(self.Index.Atlas) do --SHP,
 		for size, icons in pairs(sizes) do -- 32,64
 			local modifier = (size == 32) and 'ABBR_' or '';
 			for button in pairs(self.Index.Button.Binding) do
@@ -431,7 +463,7 @@ end
 function GamepadMixin:ApplyPresetVars()
 	assert(self.Preset.Variables, ('Console variables missing from %s template.'):format(self.Name))
 	for var, val in pairs(self.Preset.Variables) do
-		SetCVar(var, val)
+		db:SetCVar(var, val)
 	end
 	self:Activate()
 end

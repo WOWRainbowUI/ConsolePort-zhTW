@@ -3,43 +3,44 @@ local MOTION_SICKNESS_CHARACTER_CENTERED = MOTION_SICKNESS_CHARACTER_CENTERED or
 local MOTION_SICKNESS_REDUCE_CAMERA_MOTION = MOTION_SICKNESS_REDUCE_CAMERA_MOTION or '減少鏡頭動作';
 local SOFT_TARGET_DEVICE_OPTS = {[0] = OFF, [1] = 'Gamepad', [2] = 'KBM', [3] = ALWAYS};
 local SOFT_TARGET_ARC_ALLOWANCE = {[0] = 'Front', [1] = 'Cone', [2] = 'Around'};
+local BLUE = GenerateClosure(ColorMixin.WrapTextInColorCode, BLUE_FONT_COLOR)
 local unpack, _, db = unpack, ...; local Console = {}; db('Data')();
 ------------------------------------------------------------------------------------------------------------
 -- Blizzard console variables
 ------------------------------------------------------------------------------------------------------------
-db:Register('Console', setmetatable({
+db:Register('Console', CPAPI.Proxy({
 	--------------------------------------------------------------------------------------------------------
 	Emulation = {
 	--------------------------------------------------------------------------------------------------------
 		{	cvar = 'GamePadEmulateShift';
 			type = Button;
 			name = '模擬 Shift';
-			desc = '要用來模擬 Shift 鍵的按鈕，按住這個按鈕會切換快捷列。';
+			desc = '要用來模擬 '..BLUE'Shift'..' 鍵的按鈕，按住這個按鈕會切換快捷列。';
 			note = '建議作為主要的輔助鍵。';
 		};
 		{	cvar = 'GamePadEmulateCtrl';
 			type = Button;
 			name = '模擬 Ctrl';
-			desc = '要用來模擬 Ctrl 鍵的按鈕，按住這個按鈕會切換快捷列。';
+			desc = '要用來模擬 '..BLUE'Ctrl'..' 鍵的按鈕，按住這個按鈕會切換快捷列。';
 			note = '建議作為次要的輔助鍵。';
 		};
 		{ 	cvar = 'GamePadEmulateAlt';
 			type = Button;
 			name = '模擬 Alt';
-			desc = '要模擬 Alt 鍵的按鈕。';
+			desc = '要模擬 '..BLUE'Alt'..' 鍵的按鈕。';
 			note = '只建議超級玩家使用。';
 		};
 		{	cvar = 'GamePadCursorLeftClick';
 			type = Button;
 			name = KEY_BUTTON1;
-			desc = '控制滑鼠游標時，要用來模擬左鍵點擊的按鈕。';
+			desc = '控制滑鼠游標時，要用來模擬'..BLUE'左鍵點擊'..'的按鈕。';
 			note = '當游標固定在中心點或隱藏時，按下此按鈕則會變成自由移動滑鼠游標。';
 		};
 		{	cvar = 'GamePadCursorRightClick';
 			type = Button;
 			name = KEY_BUTTON2;
-			desc = '控制滑鼠游標時，要用來模擬右鍵點擊的按鈕。';
-			note = '固定在中心點的位置，用來與遊戲世界互動，';
+			desc = '控制滑鼠游標時，要用來模擬'..BLUE'右鍵點擊'..'的按鈕。';
+			note = '固定在中心點的位置，用來與遊戲世界互動。';
 		};
 		{	cvar = 'GamePadEmulateTapWindowMs';
 			type = Number(350, 25);
@@ -358,9 +359,7 @@ db:Register('Console', setmetatable({
 			desc = '點選的游標點一下為點右鍵，而不是左鍵。';
 		};
 	};
-}, {
-	__index = Console;
-}))
+}, Console))
 
 function Console:GetMetadata(key)
 	for set, cvars in pairs(self) do

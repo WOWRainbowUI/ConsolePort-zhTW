@@ -12,9 +12,9 @@ local BROWSER_FRAME_WIDTH   = 560;
 local BROWSER_FRAME_PADDING =
 	(BROWSER_FRAME_WIDTH - BROWSER_CONTENT_WIDTH) / 2;
 
-local KEYS_MARK  = BLUE_FONT_COLOR:WrapTextInColorCode(CTRL_KEY_TEXT ..'+A')
-local KEYS_COPY  = BLUE_FONT_COLOR:WrapTextInColorCode(CTRL_KEY_TEXT ..'+C')
-local KEYS_PASTE = BLUE_FONT_COLOR:WrapTextInColorCode(CTRL_KEY_TEXT ..'+V')
+local KEYS_MARK  = BLUE_FONT_COLOR:WrapTextInColorCode(CTRL_KEY_TEXT ..'+A');
+local KEYS_COPY  = BLUE_FONT_COLOR:WrapTextInColorCode(CTRL_KEY_TEXT ..'+C');
+local KEYS_PASTE = BLUE_FONT_COLOR:WrapTextInColorCode(CTRL_KEY_TEXT ..'+V');
 
 local KEYS_COPY_STRING = ('%s + %s'):format(KEYS_MARK, KEYS_COPY)
 local EXPORT_DATA_TEXT = L([[
@@ -65,8 +65,10 @@ local AliasMap = {
 		[PFX..'Configs$'] = '裝置對映';
 		[PFX..'Cvars$'] = '裝置設定';
 		[PFX..'Devices$'] = '裝置設定檔';
-		[PFX..'_BarSetup$'] = '快捷列設定';
+		[PFX..'_BarLayout$'] = '快捷列設定';
+		[PFX..'_BarPresets$'] = '快捷列預先設定';
 		[PFX..'_BarLoadout$'] = '快捷列版面配置';
+		[PFX..'_BarSetup$'] = '快捷列版面配置 (已捨棄)';
 		[PFX..'_Talents$'] = TALENTS;
 		[PFX..'Bindings/(%u+%d?)/(.*)$'] = function(button, mod)
 			return ConsolePort:GetFormattedButtonCombination(button, mod)
@@ -90,7 +92,7 @@ local AliasMap = {
 			if type(var) == 'table' then
 				return ('|cFF757575%s|r\n%s'):format(var.head or NOT_APPLICABLE, var.name)
 			end
-			return variable; 
+			return variable;
 		end;
 		[PFX..'Utility/([^/]+)$'] = function(setID)
 			if ( tonumber(setID) == 1 ) then
@@ -112,7 +114,7 @@ local AliasMap = {
 		['^"([%u%d]+)"$'] = function(binding)
 			env.BindingInfo:RefreshDictionary()
 			return env.BindingInfo:GetBindingName(binding) or ('%q'):format(binding)
-		end; 
+		end;
 		['^"(CLICK %w+:%w+)"$'] = function(binding)
 			local _, _, name = db.Bindings:GetDescriptionForBinding(binding)
 			return name or ('%q'):format(binding)
@@ -145,10 +147,10 @@ local AliasMapExport = db.table.merge({
 -- Pickup handlers
 ---------------------------------------------------------------
 local ActionPickupHandlers = {
-	spell = function(id) return PickupSpell(id) end;
-	item = function(id) return PickupItem(id) end;
+	spell = function(id) return CPAPI.PickupSpell(id) end;
+	item = function(id) return CPAPI.PickupItem(id) end;
 	summonpet    = C_PetJournal and C_PetJournal.PickupPet;
-	equipmentset = function(id) 
+	equipmentset = function(id)
 		local setID = C_EquipmentSet.GetEquipmentSetID(id)
 		if setID then
 			return C_EquipmentSet.PickupEquipmentSet(setID)
@@ -238,7 +240,8 @@ local Aggregators = {
 		end
 		return vars;
 	end;
-	ConsolePort_BarSetup = function() return ConsolePort_BarSetup end;
+	ConsolePort_BarLayout = function() return ConsolePort_BarLayout end;
+	ConsolePort_BarPresets = function() return ConsolePort_BarPresets end;
 	ConsolePort_BarLoadout = function()
 		local actions = {};
 		for page = 1, 10 do
@@ -247,12 +250,13 @@ local Aggregators = {
 				local actionInfo = {GetActionInfo(((page - 1) * NUM_ACTIONBAR_BUTTONS) + slot)}
 				actions[page][slot] = actionInfo;
 				if (actionInfo[1] == 'macro') then
-					tAppendAll(actionInfo, {GetMacroInfo(actionInfo[2])}) 
+					tAppendAll(actionInfo, {GetMacroInfo(actionInfo[2])})
 				end
 			end
 		end
 		return actions;
 	end;
+	ConsolePort_BarSetup = nop;
 }
 
 local Evaluators = {
@@ -298,8 +302,12 @@ local Evaluators = {
 			C_GamePad.SetConfig(config)
 		end
 	end};
-	{'ConsolePort_BarSetup', function(setup)
-		ConsolePort_BarSetup = setup;
+	{'ConsolePort_BarLayout', function(setup)
+		ConsolePort_BarLayout = setup;
+		return true;
+	end};
+	{'ConsolePort_BarPresets', function(presets)
+		ConsolePort_BarPresets = presets;
 		return true;
 	end};
 	{'ConsolePort_BarLoadout', function(actions)
@@ -321,6 +329,11 @@ local Evaluators = {
 			end
 		end
 	end};
+	{'ConsolePort_BarSetup', function(setup)
+		ConsolePort_BarSetup  = setup;
+		ConsolePort_BarLayout = nil;
+		return true;
+	end}; -- deprecated
 }
 ---------------------------------------------------------------
 

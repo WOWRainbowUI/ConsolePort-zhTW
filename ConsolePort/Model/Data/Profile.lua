@@ -15,7 +15,7 @@ setfenv(__, setmetatable(db('Data'), {__index = _G}));
 ------------------------------------------------------------------------------------------------------------
 -- Gamepad API profile values
 ------------------------------------------------------------------------------------------------------------
-db:Register('Profile', {
+db:Register('Profile', CPAPI.Proxy({
 	['移動輸入'] = {
 		{	name = '移動盲區';
 			path = 'stickConfigs/<stick:Movement>/deadzone';
@@ -82,4 +82,21 @@ db:Register('Profile', {
 			note = '鏡頭視角是指依據當前的類比輸入暫時轉動鏡頭。';
 		};
 	};
-})
+}, Profile))
+
+function Profile:GetObject(path)
+	for section, fields in pairs(self) do
+		for i, field in ipairs(fields) do
+			if ( field.path == path ) then
+				return field, section, i;
+			end
+		end
+	end
+end
+
+function Profile:GetConfiguredValue(path)
+	local field = self:GetObject(path)
+	if field then
+		return field.data:Get()
+	end
+end
