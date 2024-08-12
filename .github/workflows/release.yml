@@ -1,25 +1,24 @@
-name: Release AddOn # description of this workflow, can be anything you want
+name: Package and release
 
-# triggers when pushing a tag
 on:
   push:
     tags:
       - '**'
 
-env:
-  CF_API_KEY: ${{ secrets.CF_API_KEY }}
-  WOWI_API_TOKEN: ${{ secrets.WOWI_API_TOKEN }}
-  WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
-  # for github releases, this secret is automatically provided to the workflow
-  # this must be explicitly configured with read-write permissions on the repository
-  GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
-
 jobs:
-  release: # "release" is a job, you can name it anything you want
+  release:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0 # reads history for commit changelog
+    env:
+      CF_API_KEY: ${{ secrets.CF_API_KEY }}
+      WOWI_API_TOKEN: ${{ secrets.WOWI_API_TOKEN }}
+      WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+      GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: BigWigsMods/packager@v2
+    steps:
+      - name: Clone project
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Package and release
+        uses: BigWigsMods/packager@v2
