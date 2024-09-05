@@ -200,7 +200,7 @@ function BindingInfo:ConvertTextToBonusBar(text, page, actionID)
 		for i=1, GetNumShapeshiftForms() do
 			local _, isActive, _, spellID = GetShapeshiftFormInfo(i)
 			if isActive and spellID then
-				return ('%s (%s)'):format(text, GetSpellInfo(spellID))
+				return ('%s (%s)'):format(text, C_Spell.GetSpellName(spellID)) -- 暫時修正
 			end
 		end
 	end
