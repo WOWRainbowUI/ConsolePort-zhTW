@@ -32,6 +32,13 @@ ConsolePort:AddVariables({
 		deps = DEPENDENCY;
 		advd = true;
 	};
+	UIalgoOptimize = _{Data.Bool(true);
+		name = '最佳化演算法';
+		desc = '游標移動使用最佳化的路徑演算法。';
+		note = '停用此功能可能會導致多個面板打開時的效能變差。';
+		deps = DEPENDENCY;
+		advd = true;
+	};
 	UIshowOnDemand = _{Data.Bool(false);
 		name = '依需求出現';
 		desc = '需要時便會顯示游標，而不是面板出現時才顯示。';
