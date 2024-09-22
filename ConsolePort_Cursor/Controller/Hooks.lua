@@ -191,7 +191,7 @@ function Hooks:SetPendingActionToUtilityRing(tooltip, owner, action)
 	self.pendingAction = action;
 	if db.Utility:SetPendingAction(1, action) then
 		if tooltip then
-			local prompt = self:GetSpecialActionPrompt('Add to Utility Ring')
+			local prompt = self:GetSpecialActionPrompt('加入工具環')
 			if prompt then
 				tooltip:AddLine(prompt)
 				tooltip:Show()
@@ -202,7 +202,7 @@ function Hooks:SetPendingActionToUtilityRing(tooltip, owner, action)
 		if existingIndex then
 			db.Utility:SetPendingRemove(1, action)
 			if tooltip then
-				local prompt = self:GetSpecialActionPrompt('Remove from Utility Ring')
+				local prompt = self:GetSpecialActionPrompt('移出工具環')
 				if prompt then
 					tooltip:AddLine(prompt)
 					tooltip:Show()
