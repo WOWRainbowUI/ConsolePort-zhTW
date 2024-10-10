@@ -25,21 +25,23 @@ end
 
 function Menu:OnFrameShown(visible, frame)
 	self.Owners[frame].visible = visible;
-	for owner, config in pairs(self.Owners) do
-		if config.visible then
-			local isRing = config.isRing;
-			self.InnerMask:SetShown(isRing)
-			self:InterpolatePoints(config, owner)
-			self:UpdateMasks(isRing)
-			if config.callback then
-				config.callback(frame)
+	RunNextFrame(function()
+		for owner, config in pairs(self.Owners) do
+			if config.visible then
+				local isRing = config.isRing;
+				self.InnerMask:SetShown(isRing)
+				self:InterpolatePoints(config, owner)
+				self:UpdateMasks(isRing)
+				if config.callback then
+					config.callback(frame)
+				end
+				self:CheckVisible()
+				return self:Show()
 			end
-			self:CheckVisible()
-			return self:Show()
 		end
-	end
-	self:CheckVisible()
-	self:Hide()
+		self:CheckVisible()
+		self:Hide()
+	end)
 end
 
 function Menu:GetTargetOffsets(target)
@@ -49,7 +51,7 @@ function Menu:GetTargetOffsets(target)
 end
 
 Menu.CheckVisible = CPAPI.Debounce(function(self)
-	MenuRing:ShowHints(self:IsVisible())
+	MenuRing:ShowHints(self:IsVisible(), GameMenu:IsVisible())
 end, Menu)
 
 ---------------------------------------------------------------
