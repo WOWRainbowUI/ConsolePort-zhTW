@@ -213,13 +213,17 @@ local Handler = CPAPI.CreateEventHandler({'Frame', '$parentConvenienceHandler', 
 	'MERCHANT_CLOSED';
 	'BAG_UPDATE_DELAYED';
 	'QUEST_AUTOCOMPLETE';
-}, {
-	SellJunkHelper = function(item)
-		if (C_Item.GetItemQuality(item) == Enum.ItemQuality.Poor) then
-			CPAPI.UseContainerItem(item:GetBagAndSlot())
-		end
-	end;
 })
+
+Handler.SellJunkHelper = function(item)
+	local isUnlimited  = Handler.autoSellUnlimited;
+	local isJunkItem   = CPAPI.GetItemQuality(item) == Enum.ItemQuality.Poor;
+	local isEquippable = CPAPI.IsEquippableItem(CPAPI.GetItemLink(item))
+
+	if isJunkItem and (isUnlimited or not isEquippable) then
+		CPAPI.UseContainerItem(item:GetBagAndSlot())
+	end
+end
 
 function Handler:MERCHANT_CLOSED()
 	CPAPI.IsMerchantAvailable = nil;
@@ -228,6 +232,7 @@ end
 function Handler:MERCHANT_SHOW()
 	CPAPI.IsMerchantAvailable = true;
 	if db('autoSellJunk') then
+		self.autoSellUnlimited = UnitLevel('player') >= db('autoSellJunkLevelLimit');
 		CPAPI.IteratePlayerInventory(self.SellJunkHelper)
 	end
 end

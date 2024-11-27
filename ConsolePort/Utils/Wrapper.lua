@@ -75,6 +75,18 @@ function CPAPI.GetAverageItemLevel(...)
 	return MAX_PLAYER_LEVEL
 end
 
+function CPAPI.GetContainerTotalSlots()
+	local totalFree, totalSlots, freeSlots, bagFamily = 0, 0;
+	for i = BACKPACK_CONTAINER, NUM_BAG_SLOTS do
+		freeSlots, bagFamily = CPAPI.GetContainerNumFreeSlots(i)
+		if ( bagFamily == 0 ) then
+			totalFree  = totalFree + freeSlots;
+			totalSlots = totalSlots + CPAPI.GetContainerNumSlots(i)
+		end
+	end
+	return totalFree, totalSlots;
+end
+
 ---------------------------------------------------------------
 -- Button constants
 ---------------------------------------------------------------
@@ -214,6 +226,8 @@ CPAPI.GetFactionParagonInfo          = C_Reputation    and C_Reputation.GetFacti
 CPAPI.GetFriendshipReputation        = C_GossipInfo    and C_GossipInfo.GetFriendshipReputation          or GetFriendshipReputation or nopt;
 CPAPI.GetFriendshipReputationRanks   = C_GossipInfo    and C_GossipInfo.GetFriendshipReputationRanks     or nop;
 CPAPI.GetItemCount                   = C_Item          and C_Item.GetItemCount                           or GetItemCount;
+CPAPI.GetItemLink                    = C_Item          and C_Item.GetItemLink                            or nop;
+CPAPI.GetItemQuality                 = C_Item          and C_Item.GetItemQuality                         or nop;
 CPAPI.GetItemSpell                   = C_Item          and C_Item.GetItemSpell                           or GetItemSpell;
 CPAPI.GetMajorFactionData            = C_MajorFactions and C_MajorFactions.GetMajorFactionData           or nop;
 CPAPI.GetMountFromItem               = C_MountJournal  and C_MountJournal.GetMountFromItem               or nop;
@@ -250,9 +264,11 @@ CPAPI.PickupSpell                    = C_Spell         and C_Spell.PickupSpell  
 CPAPI.PickupSpellBookItem            = C_SpellBook     and C_SpellBook.PickupSpellBookItem               or PickupSpellBookItem;
 CPAPI.PutActionInSlot                = C_ActionBar     and C_ActionBar.PutActionInSlot                   or PlaceAction;
 CPAPI.RequestLoadQuestByID           = C_QuestLog      and C_QuestLog.RequestLoadQuestByID               or nop;
+CPAPI.RunMacroText                   = C_Macro         and C_Macro.RunMacroText                          or RunMacroText;
 CPAPI.SplitContainerItem             = C_Container     and C_Container.SplitContainerItem                or SplitContainerItem;
 CPAPI.UseContainerItem               = C_Container     and C_Container.UseContainerItem                  or UseContainerItem;
 -- Fallthroughs
+CPAPI.ClearCursor                    = ClearCursor        or nop;
 CPAPI.GetOverrideBarSkin             = GetOverrideBarSkin or nop;
 CPAPI.GetSpecializationInfoByID      = GetSpecializationInfoByID or nop;
 CPAPI.IsInLFDBattlefield             = IsInLFDBattlefield or nop;

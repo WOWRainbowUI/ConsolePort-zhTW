@@ -9,11 +9,6 @@ local ItemMenu = db:Register('ItemMenu', CPAPI.EventHandler(ConsolePortItemMenu,
 	'PLAYER_REGEN_DISABLED';
 }))
 ---------------------------------------------------------------
-local INDEX_INFO_ILINK = 2
-local INDEX_INFO_ITEMQ = 3
-local INDEX_INFO_STACK = 8
-local INDEX_INFO_EQLOC = 9
----------------------------------------------------------------
 local INV_EQ_LOCATIONS = {
 	INVTYPE_RANGED         = CPAPI.IsClassicVersion and {'RANGEDSLOT'};
 	INVTYPE_CLOAK          = {'BACKSLOT'};
@@ -60,6 +55,7 @@ function ItemMenu:SetItem(bagID, slotID)
 	self.Name:SetTextColor(self:GetItemQualityColor().color:GetRGB())
 	self.Border:SetAtlas(BORDER_ATLAS[self:GetQuality()])
 
+	self:ClearPickup()
 	self:SetTooltip()
 	self:SetCommands()
 	self:FixHeight()
@@ -82,7 +78,7 @@ function ItemMenu:SetCommands()
 	end
 
 	if self:IsSellableItem() then
-		self:AddCommand('Sell', 'Sell')
+		self:AddCommand(L'Sell', 'Sell')
 	end
 
 	if self:IsSplittableItem() then
@@ -334,6 +330,10 @@ function ItemMenu:Refresh()
 	end
 end
 
+function ItemMenu:ClearPickup()
+	CPAPI.ClearCursor()
+end
+
 function ItemMenu:MERCHANT_SHOW()
 	self.merchantAvailable = true;
 	self:Refresh()
@@ -355,3 +355,5 @@ end
 ---------------------------------------------------------------
 ItemMenu:SetAttribute('nodepass', true)
 ItemMenu:CreateFramePool('Button', 'CPPopupButtonTemplate', db.PopupMenuButton)
+---------------------------------------------------------------
+GameMenuFrame:HookScript('OnShow', GenerateClosure(ItemMenu.Hide, ItemMenu))
