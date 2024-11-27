@@ -405,6 +405,11 @@ db:Register('Variables', CPAPI.Callable({
 		name = '自動賣垃圾';
 		desc = '和商人互動時自動賣出垃圾。';
 	};
+	autoSellJunkLevelLimit = _{Number(10, 1, true);
+		name = '限制自動賣裝備的等級';
+		desc = '當你的角色低於此等級時，將不會賣出灰色品質的裝備。';
+		advd = true;
+	};
 	UIscale = _{Number(1, 0.025, true);
 		name = '整體縮放大小';
 		desc = '縮放大部分的 ConsolePort 框架，相對於使用者介面縮放大小。';

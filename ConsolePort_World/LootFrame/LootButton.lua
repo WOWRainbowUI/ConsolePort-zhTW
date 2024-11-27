@@ -138,7 +138,7 @@ end
 ConsolePort:AddVariables({
 	useGlobalLootTooltip = {db.Data.Bool(false);
 		head = ACCESSIBILITY_LABEL;
-		sort = 3;
+		sort = 4;
 		name = '使用通用的拾取浮動提示資訊';
 		desc = '使用通用的遊戲浮動提示來顯示拾取資訊，讓其他插件能夠新增資訊到可拾取的物品中。';
 		note = '需要 ConsolePort World。';

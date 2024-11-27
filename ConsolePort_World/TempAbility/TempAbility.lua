@@ -234,7 +234,7 @@ end
 ConsolePort:AddVariables({
 	showAbilityBriefing = {db.Data.Bool(true);
 		head = ACCESSIBILITY_LABEL;
-		sort = 3;
+		sort = 4;
 		name = '顯示能力說明';
 		desc = '顯示剛獲得的能力的簡單說明。';
 		note = '需要 ConsolePort World。';
