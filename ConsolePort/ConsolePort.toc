@@ -1,9 +1,9 @@
-## Interface: 110005
+## Interface: 110007
 ## IconTexture: Interface\AddOns\ConsolePort\Assets\Textures\Logo\CP_Thumb
 ## Title: Console Port
 ## Notes: Game controller addon
 ## AddonCompartmentFunc: ConsolePort
-## Version: 2.9.42
+## Version: 2.9.43
 
 ## Author: Sebastian Lindfors
 ## X-Website: https://github.com/seblindfors/ConsolePort
@@ -23,7 +23,6 @@ API.lua
 
 Utils\__manifest.xml
 Model\__manifest.xml
-Locale\__manifest.xml
 Controller\__manifest.xml
 Widget\__manifest.xml
 View\__manifest.xml
