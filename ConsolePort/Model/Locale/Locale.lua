@@ -2,7 +2,7 @@ local INNER_LOCALE_CAPTURE = 'L%b[]';
 local InnerLocaleLookup;
 
 local Locale = select(2, ...):Register('Locale', setmetatable({}, {
-	__index = function(self, k)
+	__index = function(_, k)
 		return k;
 	end;
 	__call = function(self, str, ...)

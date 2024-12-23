@@ -17,28 +17,10 @@ local KEYS_COPY  = BLUE_FONT_COLOR:WrapTextInColorCode(CTRL_KEY_TEXT ..'+C');
 local KEYS_PASTE = BLUE_FONT_COLOR:WrapTextInColorCode(CTRL_KEY_TEXT ..'+V');
 
 local KEYS_COPY_STRING = ('%s + %s'):format(KEYS_MARK, KEYS_COPY)
-local EXPORT_DATA_TEXT = L([[
+local EXPORT_DATA_TEXT = L('EXPORT_DATA_TEXT', KEYS_COPY_STRING)
 
-|cFFFFFF00匯出|r
-
-請選擇要匯出的資料。會在下方產生文字字串，可供複製貼上到其他電腦，或是分享給其他玩家。
-
-按下 %s 來複製文字字串。
-]], KEYS_COPY_STRING)
-
-local IMPORT_DATA_TEXT = L([[
-
-|cFFFFFF00匯入|r
-
-請在下方貼上匯出的文字字串，然後載入並選擇要匯入的資料。如果可以套用的話，匯入的資料會覆蓋掉目前的資料。
-
-在來源按下 %s 複製文字字串，然後在下方按 %s 貼上。
-]], KEYS_COPY_STRING, KEYS_PASTE)
-local IMPORT_FAILED_TEXT = L([[
-
-|cFFFFFF00匯入|r
-
-匯入失敗:]])
+local IMPORT_DATA_TEXT = L('IMPORT_DATA_TEXT', KEYS_COPY_STRING, KEYS_PASTE)
+local IMPORT_FAILED_TEXT = L('IMPORT_FAILED_TEXT');
 
 local PFX = '^ConsolePort'; -- alias path pattern prefix
 
@@ -422,7 +404,7 @@ local function EvaluateImportData(data)
 			return CPAPI.Popup('ConsolePort_Import_Failed', {
 				button1 = OKAY;
 				showAlert = 1;
-				text = IMPORT_FAILED_TEXT..'\n%s';
+				text = IMPORT_FAILED_TEXT..'%s';
 			}, result)
 		elseif result then
 			reloadWhenDone = true;

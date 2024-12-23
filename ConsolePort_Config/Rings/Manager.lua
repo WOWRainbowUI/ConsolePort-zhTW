@@ -4,39 +4,7 @@ local LoadoutTypeMetaMap = LibStub('ConsolePortActionButton').TypeMetaMap;
 
 ---------------------------------------------------------------
 local DEFAULT_RING_ID = CPAPI.DefaultRingSetID;
-local DEFAULT_RING_BINDING = 'LeftButton';
-
 local BUTTON_WITH_ICON_TEXT = '     %s';
-
-local SELECTED_RING_TEXT = L[[這是目前選擇的環形選單。
-按住綁定的按鈕不放時，所有選擇的能力都會出現在畫面上並形成一個環。
-
-轉動搖桿方向，朝要使用的能力傾斜，然後放開綁定的按鈕來用它。]]
-local ADD_NEW_RING_TEXT = [[|cFFFFFF00建立新的環|r
-請選擇新環形選單的名稱:]]
-local REMOVE_RING_TEXT = [[|cFFFFFF00移除環|r
-是否確定要移除目前的環形選單?]]
-local CLEAR_RING_TEXT = L[[|cFFFFFF00清空工具環|r
-是否確定要清空目前的工具環?]]
-local SET_BINDING_TEXT = [[ 
-|cFFFFFF00設定按鈕綁定|r
-
-按下要使用這個環形選單的按鈕組合。
-
-]]
-local RING_MENU_DESC = L(([[
-建立你自己的環形選單，放置你不想浪費快捷列格子來放的物品、法術、巨集和坐騎。
-
-用法為，先按住綁定的按鈕不放，旋轉搖桿向你要選擇的項目傾斜，再放開按鈕。
-
-預設的環，也稱為 |CFF00FF00工具環|r，具有讓做任務更輕鬆，以及更容易與世界互動的特性，它並非固定不變的。會在需要的時候自動新增和移除選單項目。
-
-如果你想要建立能搭配輸出迴圈使用的環，而不只是工具物品，那麼強烈建議你使用自訂環來做。
-]]):trim())
-
-local RING_EMPTY_DESC = [[這個環還沒有加入任何能力。]]
-
-
 local EXTRA_ACTION_ID = CPAPI.ExtraActionButtonID;
 local FIXED_OFFSET = 8;
 ---------------------------------------------------------------
@@ -59,7 +27,7 @@ local function GetRingNameSuggestion()
 end
 
 local function GetRingDisplayName(name)
-	return name and (tonumber(name) and ('環形選單 |cFF00FFFF%s|r'):format(name) or name)
+	return name and (tonumber(name) and L.FORMAT_RING_NUMERICAL:format(name) or name)
 end
 
 local function GetRingDisplayNameForIndex(index)
@@ -202,7 +170,7 @@ function RingSelectMixin:OnRingRemoved(ringID)
 end
 
 function RingSelectMixin:Construct()
-	Widgets.Select(self, 'RingID', nil, db.Data.Select(1, 1):SetRawOptions(GetRingOptions()), SELECTED_RING_TEXT)
+	Widgets.Select(self, 'RingID', nil, db.Data.Select(1, 1):SetRawOptions(GetRingOptions()), L.SELECTED_RING_TEXT)
 	self:SetDrawOutline(true)
 	self.tooltipAnchor = 'ANCHOR_BOTTOM';
 	self.Popout:ClearAllPoints()
@@ -254,7 +222,7 @@ end
 
 function AddRingButton:OnClick()
 	return CPAPI.Popup('ConsolePort_Rings_Add_Ring', {
-		text = ADD_NEW_RING_TEXT;
+		text = L.ADD_NEW_RING_TEXT;
 		button1 = BATTLETAG_CREATE;
 		button2 = CANCEL;
 		hasEditBox = 1;
@@ -292,7 +260,7 @@ end
 function RemoveRingButton:OnClick()
 	local ringID = GetSelectedRingID()
 	return CPAPI.Popup('ConsolePort_Rings_Remove_Ring', {
-		text = ringID == DEFAULT_RING_ID and CLEAR_RING_TEXT or REMOVE_RING_TEXT;
+		text = ringID == DEFAULT_RING_ID and L.CLEAR_RING_TEXT or L.REMOVE_RING_TEXT;
 		button1 = REMOVE;
 		button2 = CANCEL;
 		OnAccept = function(self)
@@ -324,7 +292,7 @@ function BindingButton:OnClick(button)
 		return self:Uncheck()
 	end
 	self.Catch:TryCatchBinding({
-		text = SET_BINDING_TEXT;
+		text = L.SET_RING_BINDING_TEXT;
 		OnHide = function()
 			self:UpdateBinding()
 			self:Uncheck()
@@ -664,7 +632,7 @@ function RingsManager:OnFirstShow()
 									HelpText = {
 										_Type = 'FontString';
 										_Setup = {'ARTWORK', 'GameTooltipText'};
-										_Text = RING_MENU_DESC;
+										_Text = L.RING_MENU_DESC;
 										_Points = {
 											{'TOPLEFT', FIXED_OFFSET, 0};
 											{'BOTTOMRIGHT', -FIXED_OFFSET, FIXED_OFFSET};
@@ -778,7 +746,7 @@ function RingsManager:OnFirstShow()
 				_Type = 'FontString';
 				_Setup = {'ARTWORK', 'Fancy22Font'};
 				_Point = {'CENTER', 0, 0};
-				_Text  = RING_EMPTY_DESC;
+				_Text  = L.RING_EMPTY_DESC;
 			};
 		};
 	})
