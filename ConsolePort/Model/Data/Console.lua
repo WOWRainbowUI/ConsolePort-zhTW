@@ -58,6 +58,12 @@ db:Register('Console', CPAPI.Proxy({
 			desc = OPTION_TOOLTIP_INTERACT_ON_LEFT_CLICK;
 			note = '會同時影響滑鼠和搖桿。';
 		};
+		{	cvar = 'HardwareCursor';
+			type = Bool(true);
+			name = '使用硬體滑鼠游標';
+			desc = '使用由作業系統提供的硬體滑鼠游標。';
+			note = '如果看不到滑鼠游標，請停用此選項。';
+		};
 		{	cvar = 'GamePadCursorAutoDisableJump';
 			type = Bool(true);
 			name = '跳躍時隱藏游標';
@@ -181,18 +187,6 @@ db:Register('Console', CPAPI.Proxy({
 			type = Bool(true);
 			name = '同步巨集';
 			desc = '是否要將本機的巨集設定儲存到伺服器。';
-		};
-		{	cvar = 'GamePadUseWinRTForXbox';
-			type = Bool(true);
-			name = '使用 WinRT 搖桿對映 (Xbox)';
-			desc = '使用 Microsoft API 將 Xbox 控制器對映至遊戲。';
-			note = '移動或按鈕綁定有問題時，請停用此選項。';
-		};
-		{	cvar = 'GamePadEmulateEsc';
-			type = Button;
-			name = '模擬 Esc';
-			desc = '要用來模擬 Esc 鍵的按鈕。';
-			note = '綁定切換顯示遊戲選單便可替換這個按鍵，使用 ConsolePort 時可以不需要模擬這個按鈕。';
 		};
 		{	cvar = 'GamePadOverlapMouseMs';
 			type = Number(2000, 100);
@@ -388,7 +382,6 @@ end
 
 	GamePadCursorCenteredEmulation = "When cursor is centered for GamePad movement, also emulate mouse clicks",
 	GamePadTankTurnSpeed = "If non-zero, character turns like a tank from GamePad movement",
-	GamePadForceXInput = "Force game to use XInput, rather than a newer, more advanced api",
 	GamePadSingleActiveID = "ID of single GamePad device to use. 0 = Use all devices' combined input",
 	GamePadAbbreviatedBindingReverse = "Display main binding button first so it's visible even if truncated on action bar",
 	GamePadListDevices = "List all connected GamePad devices in the console",
