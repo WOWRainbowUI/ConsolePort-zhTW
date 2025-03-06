@@ -236,73 +236,16 @@ db:Register('Console', CPAPI.Proxy({
 		};
 	};
 	--------------------------------------------------------------------------------------------------------
-	Targeting = {
-	--------------------------------------------------------------------------------------------------------
-		{	cvar = 'SoftTargetEnemy';
-			type = Map(0, SOFT_TARGET_DEVICE_OPTS);
-			name = '啟用軟選取目標 (敵方)';
-			desc = '只要看到敵人就自動選取為目標。';
-			note = '按下選取目標的按鈕後，可將軟選取變為硬選取。';
-		};
-		{	cvar = 'SoftTargetFriend';
-			type = Map(0, SOFT_TARGET_DEVICE_OPTS);
-			name = '啟用軟選取目標 (友方)';
-			desc = '只要看到友方就自動選取為目標。';
-			note = '硬選取敵方目標的同時，也可以軟選取友方目標。';
-		};
-		{	cvar = 'SoftTargetForce';
-			type = Map(0, {[0] = OFF, [1] = ENEMY, [2] = FRIEND});
-			name = '強制硬選取';
-			desc = '將軟選取的目標自動設為當前目標。';
-		};
-		{	cvar = 'SoftTargetMatchLocked';
-			type = Map(0, {[0] = OFF, [1] = '明確的', [2] = '隱含的'});
-			name = '鎖定目標';
-			desc = '依據選擇的模式來鎖定軟目標。';
-			note = '明確的只會鎖定硬選取的目標，隱含的會包含你攻擊的對象。';
-		};
-		{	cvar = 'SoftTargetNameplateEnemy';
-			type = Bool(true);
-			name = '顯示軟選取的敵方名條';
-			desc = '總是顯示軟選取敵方目標的名條。';
-		};
-		{	cvar = 'SoftTargetNameplateFriend';
-			type = Bool(false);
-			name = '顯示軟選取的友方名條';
-			desc = '總是顯示軟選取友方目標的名條。';
-		};
-		{	cvar = 'SoftTargetIconEnemy';
-			type = Bool(false);
-			name = '顯示敵方目標圖示';
-			desc = '在當前敵方軟選取目標的上方顯示圖示。';
-		};
-		{	cvar = 'SoftTargetIconFriend';
-			type = Bool(false);
-			name = '顯示友方目標圖示';
-			desc = '在當前友方軟選取目標的上方顯示圖示。';
-		};
-		{	cvar = 'SoftTargetTooltipEnemy';
-			type = Bool(false);
-			name = '顯示敵方浮動提示資訊';
-			desc = '顯示敵方軟選取目標的浮動提示資訊。';
-		};
-		{	cvar = 'SoftTargetTooltipFriend';
-			type = Bool(false);
-			name = '顯示友方浮動提示資訊';
-			desc = '顯示友方軟選取目標的浮動提示資訊。';
-		};
-	};
-	--------------------------------------------------------------------------------------------------------
 	Tooltips = {
 	--------------------------------------------------------------------------------------------------------
 		{	cvar = 'SoftTargetTooltipDurationMs';
 			type = Number(2000, 250, true);
-			name = '自動浮動提示資訊持續時間';
-			desc = '自動取得目標的浮動提示資訊要顯示多久，以毫秒為單位。';
+			name = '自動浮動提示持續時間';
+			desc = '對於已取得的目標或可互動的目標，顯示浮動提示資訊的持續時間，以毫秒為單位。';
 		};
 		{	cvar = 'SoftTargetTooltipLocked';
 			type = Bool(false);
-			name = '鎖定自動浮動提示資訊';
+			name = '鎖定自動浮動提示';
 			desc = '只要目標還存在，自動取得目標的浮動提示資訊會一直顯示。';
 		};
 	};

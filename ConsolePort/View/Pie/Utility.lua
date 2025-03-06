@@ -3,6 +3,7 @@ local _, db = ...;
 local Utility = Mixin(CPAPI.EventHandler(ConsolePortUtilityToggle, {
 	'ACTIONBAR_SLOT_CHANGED';
 	'BAG_UPDATE_DELAYED';
+	'PLAYER_ENTERING_WORLD';
 	'QUEST_DATA_LOAD_RESULT';
 	'QUEST_WATCH_LIST_CHANGED';
 	'QUEST_WATCH_UPDATE';
@@ -205,12 +206,12 @@ function Utility:OnDataLoaded()
 			local size = self:GetAttribute('size');
 		]];
 	});
-	setmetatable(self.Data, {__index = function(data, key)
+	CPAPI.Proxy(self.Data, function(data, key)
 		self:Parse([[
 			DATA[{ring}] = newtable();
 		]], {ring = tostring(key)})
 		return rawset(data, key, {})[key];
-	end})
+	end)
 	self:OnAutoAssignedChanged()
 	self:OnRemoveButtonChanged()
 	self:OnAxisInversionChanged()
@@ -276,10 +277,16 @@ Utility:HookScript('OnShow', Utility.OnStickyIndexChanged)
 ---------------------------------------------------------------
 -- Widget handling
 ---------------------------------------------------------------
+function Utility:QueueRefresh()
+	if self.isDataReady then
+		db:RunSafe(self.RefreshAll, self)
+	end
+end
+
 function Utility:RefreshAll()
 	self:ClearAllActions()
 	local numButtons = 0;
-	for setID, set in pairs(self.Data) do
+	for setID, set in pairs(self:ValidateData()) do
 		for i, action in ipairs(set) do
 			self:AddSecureAction(setID, i, action)
 		end
@@ -310,7 +317,7 @@ function Utility:AddSecureAction(set, idx, info)
 	self:SetFrameRef(set..':'..idx, button)
 	local kind, action = self:GetKindAndAction(info)
 	if not kind or not action then
-		return
+		return -- TODO: not good, we end up with missing indices.
 	end
 	button:SetState(set, kind, action)
 
@@ -557,14 +564,132 @@ function Utility:AnnounceRemoval(link, set)
 end
 
 ---------------------------------------------------------------
+-- Data validation
+---------------------------------------------------------------
+Utility.ValidationMap = {
+	macro = function(data)
+		local macroID = data.macro;
+		local info = CPAPI.GetMacroInfo(macroID)
+		if not data.body and info then
+			return CreateFromMixins(data, info)
+		elseif ( not info or ( data.body ~= info.body) ) then
+			local bestMatchID, bestMatchScore = nil, math.huge;
+			local test = { body = data.body, name = data.name, icon = data.icon }
+
+			for id, other in pairs(CPAPI.GetAllMacroInfo()) do
+				local score = 0;
+				if other.body and test.body then
+					score = score + CPAPI.MinEditDistance(other.body, test.body)
+				end
+				if other.name and test.name then
+					score = score + CPAPI.MinEditDistance(other.name, test.name)
+				end
+				if other.icon == test.icon then
+					score = score - 1 -- Matching icon reduces the score
+				end
+				if score < bestMatchScore then
+					bestMatchScore, bestMatchID = score, id;
+				end
+			end
+
+			if bestMatchID then
+				return CreateFromMixins(data, CPAPI.GetMacroInfo(bestMatchID), {
+					macro = bestMatchID;
+				})
+			end
+		end
+		return data;
+	end;
+	item = function(data, setID, idx)
+		local item = data.item;
+		local link = data.link;
+		if not item and not link then
+			return CPAPI.Log('Invalid item removed from %s in slot %d.',
+				Utility:ConvertSetIDToDisplayName(setID),
+				idx
+			);
+		end
+		if ( type(item) == 'number' ) then
+			item = CPAPI.GetItemInfo(item).itemLink;
+			link = item;
+		end
+		if not item then
+			item = link;
+		end
+		if not tostring(item):match('item:%d+') then
+			-- NOTE: This check is to make sure LAB:getItemId receives a valid item link.
+			return CPAPI.Log('Invalid item removed from %s:\nID: %s\nLink: %s',
+				Utility:ConvertSetIDToDisplayName(setID),
+				tostring(item),
+				tostring(link)
+			);
+		end
+		return CreateFromMixins(data, { item = item, link = link });
+	end;
+	--[[spell = function(data, setID, idx)
+		local spell = data.spell;
+		local link  = data.link;
+		if not spell and not link then
+			return CPAPI.Log('Invalid spell removed from %s in slot %d.',
+				Utility:ConvertSetIDToDisplayName(setID),
+				idx
+			);
+		end
+		if not spell then
+			spell = link;
+		end
+		local info = CPAPI.GetSpellInfo(spell)
+		if not info.spellID and not CPAPI.GetSpellLink(spell) then
+			-- NOTE: if the spellID is not found, the spell is invalid,
+			-- at least for the current character.
+			return CPAPI.Log('Invalid spell removed from %s:\nID: %s\nLink: %s',
+				Utility:ConvertSetIDToDisplayName(setID),
+				tostring(spell),
+				tostring(link)
+			);
+		end
+		return data;
+	end;]]
+};
+
+function Utility:ValidateAction(action, setID, idx)
+	if not action then return end;
+	local validator = self.ValidationMap[action.type];
+	if validator then
+		return validator(action, setID, idx);
+	end
+	return action;
+end
+
+function Utility:ValidateData()
+	for setID, set in pairs(self.Data) do
+		local validSet = {};
+		for i = 1, #set do
+			local validAction = self:ValidateAction(set[i], setID, i);
+			if validAction then
+				tinsert(validSet, validAction)
+			end
+		end
+		wipe(set)
+		tAppendAll(set, validSet)
+	end
+	return self.Data;
+end
+
+---------------------------------------------------------------
 -- Mapping from type to usable attributes
 ---------------------------------------------------------------
+local function GetUsableSpellID(data)
+	return ( data.link and data.link:match('spell:(%d+)') )
+		or CPAPI.GetSpellInfo(data.spell).spellID or data.spell;
+end
+
 Utility.KindAndActionMap = {
 	action = function(data) return data.action end;
 	item   = function(data) return data.item end;
 	pet    = function(data) return data.action end;
 	macro  = function(data) return data.macro end;
-	spell  = function(data) return (data.link and data.link:match('spell:(%d+)')) or CPAPI.GetSpellInfo(data.spell).spellID or data.spell end;
+	spell  = function(data) return GetUsableSpellID(data) end;
 	equipmentset = function(data) return data.equipmentset end;
 }
 
@@ -610,7 +735,9 @@ Utility.SecureHandlerMap = {
 		return {type = 'spell', spell = spellID, link = CPAPI.GetSpellLink(spellID)};
 	end;
 	macro = function(index)
-		return {type = 'macro', macro = index};
+		local info = CPAPI.GetMacroInfo(index)
+		info.type, info.macro = 'macro', index;
+		return info;
 	end;
 	mount = function(mountID)
 		local spellID = select(2, CPAPI.GetMountInfoByID(mountID));
@@ -934,7 +1061,7 @@ function Utility:SPELLS_CHANGED()
 	if self.autoAssignExtras then
 		db:RunSafe(self.ToggleZoneAbilities, self)
 	end
-	db:RunSafe(self.RefreshAll, self)
+	self:QueueRefresh()
 end
 
 function Utility:ACTIONBAR_SLOT_CHANGED()
@@ -953,6 +1080,15 @@ end
 function Utility:UPDATE_MACROS()
 	for button in self:EnumerateActive() do
 		button:UpdateAction(true)
+	end
+	self:QueueRefresh()
+end
+
+function Utility:PLAYER_ENTERING_WORLD(isInitialLogin, isReloadingUi)
+	if isInitialLogin or isReloadingUi then
+		self.isDataReady = true;
+		self:QueueRefresh()
+		self:UnregisterEvent('PLAYER_ENTERING_WORLD')
 	end
 end
 

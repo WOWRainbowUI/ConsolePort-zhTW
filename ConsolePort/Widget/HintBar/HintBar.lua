@@ -57,6 +57,28 @@ function CPHintMixin:SetData(icon, text)
 	self.Text:SetText(text)
 	self:SetWidth(self.Text:GetStringWidth() + self.Icon:GetWidth() + 18)
 	self:UpdateParentWidth()
+	self:ClearTimer()
+end
+
+function CPHintMixin:SetTimer(duration)
+	local timer = self:GetTimer(true)
+	CooldownFrame_Set(timer, GetTime(), duration, 1, true)
+end
+
+function CPHintMixin:ClearTimer()
+	local timer = self:GetTimer(false)
+	if timer then
+		CooldownFrame_Clear(self:GetTimer())
+	end
+end
+
+function CPHintMixin:GetTimer(create)
+	if not self.timer then
+		if not create then return end;
+		self.timer = CreateFrame('Cooldown', nil, self, 'CPHintTimerTemplate')
+		self.timer:SetPoint('CENTER', self.Icon, 'CENTER', 0, 0)
+	end
+	return self.timer;
 end
 
 ----------------------------------

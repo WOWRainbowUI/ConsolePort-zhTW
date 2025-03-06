@@ -45,6 +45,49 @@ Type.SimplePoint = Data.Interface {
 	};
 };
 
+Type.ComplexPoint = Data.Interface {
+	name = 'Position';
+	desc = 'Position of the element.';
+	Data.Point {
+		point = _{
+			name = 'Anchor';
+			desc = 'Anchor point to attach.';
+			Data.Select('CENTER', env.Const.ValidPoints());
+		};
+		relPoint = _{
+			name = 'Relative Anchor';
+			desc = 'Anchor point of parent to pair with.';
+			Data.Select('CENTER', env.Const.ValidPoints());
+		};
+		strata = _{
+			name = 'Strata';
+			desc = 'Frame strata of the element.';
+			Data.Select('MEDIUM', env.Const.ValidStratas());
+		};
+		level = _{
+			name = 'Level';
+			desc = 'Frame level of the element.';
+			Data.Number(2, 1);
+		};
+		x = _{
+			name = 'X Offset';
+			desc = 'Horizontal offset from anchor point.';
+			Data.Number(0, 1, true);
+		};
+		y = _{
+			name = 'Y Offset';
+			desc = 'Vertical offset from anchor point.';
+			vert = true;
+			Data.Number(0, 1, true);
+		};
+		offsetscale = _{
+			name = 'Relative Rescale';
+			desc = 'Maintain offset relative to scale.';
+			Data.Bool(false);
+		};
+	};
+};
+
 Type.Visibility = Data.Interface {
 	name = '可見性';
 	desc = env.MakeMacroDriverDesc(
@@ -221,7 +264,7 @@ Interface.Group = Data.Interface {
 			desc = '群組中的按鈕。';
 			Data.Mutable(Interface.GroupButton):SetKeyOptions(env.Const.ProxyKeyOptions);
 		};
-		pos = _(Type.SimplePoint : Implement {
+		pos = _(Type.ComplexPoint : Implement {
 			desc = '群組的位置。';
 			{
 				point    = 'BOTTOM';
@@ -252,7 +295,7 @@ Interface.Page = Data.Interface {
 	desc = '快捷列的一個頁面。';
 	Data.Table {
 		type = {hide = true; Data.String('Page')};
-		pos = _(Type.SimplePoint : Implement {
+		pos = _(Type.ComplexPoint : Implement {
 			desc = '頁面的位置。';
 			{
 				point    = 'BOTTOM';
@@ -314,7 +357,7 @@ Interface.Petring = Data.Interface {
 	desc = '寵物指令的按鈕環。';
 	Data.Table {
 		type = {hide = true; Data.String('Petring')};
-		pos = _(Type.SimplePoint : Implement {
+		pos = _(Type.ComplexPoint : Implement {
 			desc = '寵物指令環的位置。';
 			{
 				point    = 'BOTTOM';
@@ -428,7 +471,7 @@ Interface.Divider = Data.Interface {
 	desc = '分隔元素的分隔線。';
 	Data.Table {
 		type = {hide = true; Data.String('Divider')};
-		pos = _(Type.SimplePoint : Implement {
+		pos = _(Type.ComplexPoint : Implement {
 			desc = '分隔線的位置。';
 			{
 				point    = 'BOTTOM';
