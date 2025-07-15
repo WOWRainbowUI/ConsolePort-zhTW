@@ -39,7 +39,7 @@ To use this library, include the `ConsolePortNode.lua` file in your project and 
 
 ```lua
 local LibStub = _G.LibStub
-local NODE = LibStub:NewLibrary('ConsolePortNode', 1)
+local NODE = LibStub('ConsolePortNode')
 ```
 
 ## License
