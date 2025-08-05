@@ -1,11 +1,11 @@
-## Interface: 11507, 50500, 110107
+## Interface: 11507, 50500, 110107, 110200
 ## Title: Lib: ActionButton-1.0
 ## Notes: Creates and manages secure Action Buttons
 ## Author: Nevcairiel
 ## X-eMail: h.leppkes@gmail.com
 ## X-Category: Library
 ## X-License: BSD
-## Version: b7f220d
+## Version: 0.56
 ## OptionalDeps: LibKeyBound-1.0, LibButtonGlow-1.0, LibClassicSpellActionCount-1.0
 
 LibStub\LibStub.lua
